@@ -65,8 +65,10 @@ class EpollMainLoop(MainLoopBase):
             events |= self.READ_WRITE
 
         if events is not None: # events may be 0
-            if fileno in self._exists_fd:
+            if fileno in self._exists_fd and events != 0:
                 self.epoll.modify(fileno, events)
+            elif fileno in self._exists_fd and events == 0:
+                self._remove_io_handler(handler)
             else:
                 self._exists_fd.update({fileno:1})
                 self.epoll.register(fileno, events)
