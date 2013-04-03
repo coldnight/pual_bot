@@ -28,14 +28,7 @@ class WebQQHandler(IOHandler):
     def fileno(self):
         with self.lock:
             if self.sock is not None:
-                try:
-                    return self.sock.fileno()
-                except socket.error, err:
-                    self.retry_self(err)
-                    self._readable = False
-                    self._readable = False
-                    self.remove_self()
-                    return self.old_fileno
+                return self.sock.fileno()
 
         return None
 
