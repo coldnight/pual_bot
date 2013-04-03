@@ -22,12 +22,17 @@ class WebQQHandler(IOHandler):
         self.webqq = webqq
         self.lock = threading.RLock()
         self._cond = threading.Condition(self.lock)
+        self.old_fileno = None
         self.setup(*args, **kwargs)      # 子类初始化接口
 
     def fileno(self):
         with self.lock:
             if self.sock is not None:
-                return self.sock.fileno()
+                try:
+                    return self.sock.fileno()
+                except:
+                    self.sock = None
+                    return self.old_fileno
 
         return None
 
@@ -114,6 +119,7 @@ class WebQQHandler(IOHandler):
                     self.req.add_header(key, value)
         try:
             self.sock, self.data = self.http_sock.make_http_sock_data(self.req)
+            self.old_fileno = self.sock.fileno()
         except socket.error, err:
             self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
                                         *args, **kwargs))
