@@ -73,4 +73,6 @@ class PasteCodeHandler(WebQQHandler):
         else:
             url = resp.url
         if url != self.url:
-            self.callback(self.pre + url)
+            content = url
+            if self.pre: content = self.pre + content
+            self.callback(content)
