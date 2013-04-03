@@ -30,8 +30,11 @@ class WebQQHandler(IOHandler):
             if self.sock is not None:
                 try:
                     return self.sock.fileno()
-                except:
-                    self.sock = None
+                except socket.error, err:
+                    self.retry_self(err)
+                    self._readable = False
+                    self._readable = False
+                    self.remove_self()
                     return self.old_fileno
 
         return None
@@ -103,6 +106,10 @@ class WebQQHandler(IOHandler):
         """ 构造http Response """
         return self.http_sock.make_response(self.sock, self.req, self.method)
 
+    def retry_self(self, err, *args, **kwargs):
+        self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
+                                    *args, **kwargs))
+
     def make_http_sock(self, url, params, method, headers = {}, *args, **kwargs):
         """ 构造HTTP SOCKET
         Arguments:
@@ -121,8 +128,7 @@ class WebQQHandler(IOHandler):
             self.sock, self.data = self.http_sock.make_http_sock_data(self.req)
             self.old_fileno = self.sock.fileno()
         except socket.error, err:
-            self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
-                                        *args, **kwargs))
+            self.retry_self(err, *args, **kwargs)
             self._writable = False
             self.sock = None
             self.data = None
