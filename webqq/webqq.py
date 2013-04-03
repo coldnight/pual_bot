@@ -119,7 +119,7 @@ class WebQQ(EventHandler):
         check_code = None
         while not check_code:
             check_code = raw_input("打开上面连接输出图片上的验证码: ")
-        return check_code.strip()
+        return check_code.strip().upper()
 
     def handle_pwd(self, password):
         """ 根据检查返回结果,调用回调生成密码和保存验证码 """

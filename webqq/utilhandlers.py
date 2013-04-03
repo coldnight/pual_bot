@@ -28,7 +28,6 @@ class RunPyCodeHandler(WebQQHandler):
         self._readable = False
         resp = self.make_http_resp()
         data = resp.read()
-        import pdb;pdb.set_trace()
         try:
             result = json.loads(data)
             status = result.get("status")
