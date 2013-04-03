@@ -6,7 +6,17 @@
 #   Date    :   13/03/01 11:44:05
 #   Desc    :   消息调度
 #
+from functools import partial
 from utils import get_logger
+
+from utilhandlers import RunPyCodeHandler, PasteCodeHandler
+
+code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
+              'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
+              'jsp', 'lighttpd', 'lua', 'matlab', 'mysql', 'nginx',
+              'objectivec', 'perl', 'php', 'python', 'python3', 'ruby',
+              'scheme', 'smalltalk', 'smarty', 'sql', 'sqlite3', 'squid',
+              'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
 
 class MessageDispatch(object):
     """ 消息调度器 """
@@ -50,7 +60,8 @@ class MessageDispatch(object):
                                        u" Web：http://web.qq.com/】", "")\
                         .replace(u"【提示：此用户正在使用Q+"
                                        u" Web：http://web3.qq.com/】", "")
-        return  content
+        return  content.replace("\r", "\n").replace("\r\n", "\n")\
+                .replace("\n\n", "\n")
 
 
     def handle_qq_group_msg(self, message):
@@ -62,8 +73,10 @@ class MessageDispatch(object):
         content = self.handle_qq_msg_contents(contents)
         uname = self.webqq.get_group_member_nick(gcode, uin)
         if content:
-            content = u"{0}: {1}".format(uname, content)
-            self.webqq.send_group_msg(gcode, content)
+            pre = u"{0}: ".format(uname)
+            callback = partial(self.webqq.send_group_msg, gcode)
+            self.handle_content(content, callback, pre)
+
 
     def handle_qq_message(self, message):
         """ 处理QQ好友消息 """
@@ -72,7 +85,31 @@ class MessageDispatch(object):
         contents = value.get("content", [])
         content = self.handle_qq_msg_contents(contents)
         if content:
-            self.webqq.send_buddy_msg(from_uin, content)
+            callback = partial(self.webqq.send_buddy_msg, from_uin)
+            self.handle_content(content, callback)
+
+    def handle_content(self, content, callback, pre = None):
+        """ 处理内容
+        Arguments:
+            `content`   -       内容
+            `callback`  -       仅仅接受内容参数的回调
+            `pre`       -       处理后内容前缀
+        """
+        if content.startswith("-"):
+            cmd, body = content.split(" ")[0].lstrip("-"),\
+                    " ".join(content.split(" ")[1:])
+            if cmd == "py":
+                handler = RunPyCodeHandler(self.webqq, code = body,
+                                           callback = callback, pre = pre)
+                self.webqq.mainloop.add_handler(handler)
+
+        if content.startswith("```"):
+            typ = content.split("\n")[0].lstrip("`").strip().lower()
+            if typ not in code_typs: typ = "text"
+            code = "\n".join(content.split("\n")[1:])
+            handler = PasteCodeHandler(self.webqq, code=code, typ=typ,
+                                       callback=callback, pre=pre)
+            self.webqq.mainloop.add_handler(handler)
 
     def dispatch(self, qq_source):
         if qq_source.get("retcode") == 0:

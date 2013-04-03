@@ -10,3 +10,4 @@ tags
 .#*
 *.db
 logs/
+.zcache/

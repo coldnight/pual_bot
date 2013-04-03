@@ -94,6 +94,10 @@ class WebQQHandler(IOHandler):
         self._readable = False
         self.webqq.event(RemoveEvent(self))
 
+    def make_http_resp(self):
+        """ 构造http Response """
+        return self.http_sock.make_response(self.sock, self.req, self.method)
+
     def make_http_sock(self, url, params, method, headers = {}, *args, **kwargs):
         """ 构造HTTP SOCKET
         Arguments:
