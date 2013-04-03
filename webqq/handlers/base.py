@@ -81,6 +81,7 @@ class WebQQHandler(IOHandler):
     def handle_err(self):
         with self.lock:
             self.sock.close()
+            self.sock = None
 
     def handle_nval(self):
         if self.sock is None:
