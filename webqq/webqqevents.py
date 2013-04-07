@@ -64,13 +64,21 @@ class WebQQMessageEvent(WebQQEvent):
         return u"WebQQ Got msg: {0}".format(self.message)
 
 class RetryEvent(WebQQEvent):
+    retry_times_map = {}
     def __init__(self, cls, req, handler, err = None, *args, **kwargs):
         self.cls = cls
+        if RetryEvent.retry_times_map.has_key(cls):
+            RetryEvent.retry_times_map[cls] += 1
+        else:
+            RetryEvent.retry_times_map[cls] = 1
         self.req = req
         self.handler = handler
         self.args = args
         self.kwargs = kwargs
         self.err = err
+
+    def get_retry_times(self):
+        return RetryEvent.retry_times_map.get(self.cls, 0)
 
     def __unicode__(self):
         return u"{0} Retry with Error {1}".format(self.cls.__name__, self.err)

@@ -292,9 +292,15 @@ class WebQQ(EventHandler):
     @event_handler(RetryEvent)
     def handle_retry(self, event):
         """ 有handler触发异常, 需重试 """
-        self.mainloop.remove_handler(event.handler)
-        handler = event.cls(self, event.req, *event.args, **event.kwargs)
-        self.mainloop.add_handler(handler)
+        times = event.get_retry_times()
+        if times <= 10:
+            self.mainloop.remove_handler(event.handler)
+            handler = event.cls(self, event.req, *event.args, **event.kwargs)
+            self.mainloop.add_handler(handler)
+        else:
+            self.logger.info(u"{0} retry too much, will retry leater"\
+                             .format(event.handler))
+            self.event(event, times * 2)
 
     @event_handler(RemoveEvent)
     def handle_remove(self, event):

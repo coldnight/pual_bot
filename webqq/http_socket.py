@@ -98,9 +98,9 @@ class HTTPSock(object):
         headers = []
         headers.append(("Host", parse.netloc))
         headers.append(("Connection", "keep-alive"))
-        #headers.append(("Accept", "*/*"))
-        #headers.append(("Accept-Charset", "UTF-8,*;q=0.5"))
-        #headers.append(("Accept-Encoding", "gzip,deflate,sdch"))
+        headers.append(("Accept", "*/*"))
+        headers.append(("Accept-Charset", "UTF-8,*;q=0.5"))
+        headers.append(("Accept-Encoding", "gzip,deflate,sdch"))
         #headers.append(("Accept-Language", "zh-CN,zh;q=0.8"))
         headers.append(("User-Agent", "Mozilla/5.0 (X11; Linux x86_64)"\
                         " AppleWebKit/537.11 (KHTML, like Gecko)"\

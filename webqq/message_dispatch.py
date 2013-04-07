@@ -97,7 +97,7 @@ class MessageDispatch(object):
         """
         if content.startswith("-"):
             cmd, body = content.split(" ")[0].lstrip("-"),\
-                    " ".join(content.split(" ")[1:])
+                    content.lstrip("-py").strip()
             if cmd == "py":
                 handler = RunPyCodeHandler(self.webqq, code = body,
                                            callback = callback, pre = pre)
