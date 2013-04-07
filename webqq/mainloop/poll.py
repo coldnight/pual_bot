@@ -136,7 +136,7 @@ class PollMainLoop(MainLoopBase):
             self._configure_io_handler(handler)
 
         if timeout == 0:
-            timeout += 1    # 带有超时的非阻塞,解约资源
+            timeout += 1
 
         events = self.poll.poll(timeout * 1000)
         self._timeout = None
