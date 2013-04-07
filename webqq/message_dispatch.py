@@ -95,13 +95,11 @@ class MessageDispatch(object):
             `callback`  -       仅仅接受内容参数的回调
             `pre`       -       处理后内容前缀
         """
-        if content.startswith("-"):
-            cmd, body = content.split(" ")[0].lstrip("-"),\
-                    content.lstrip("-py").strip()
-            if cmd == "py":
-                handler = RunPyCodeHandler(self.webqq, code = body,
-                                           callback = callback, pre = pre)
-                self.webqq.mainloop.add_handler(handler)
+        if content.startswith("-py"):
+            body = content.lstrip("-py").strip()
+            handler = RunPyCodeHandler(self.webqq, code = body,
+                                        callback = callback, pre = pre)
+            self.webqq.mainloop.add_handler(handler)
 
         if content.startswith("```"):
             typ = content.split("\n")[0].lstrip("`").strip().lower()
