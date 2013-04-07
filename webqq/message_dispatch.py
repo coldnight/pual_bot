@@ -109,6 +109,13 @@ class MessageDispatch(object):
                                        callback=callback, pre=pre)
             self.webqq.mainloop.add_handler(handler)
 
+        if content.strip() == "ping " + self.webqq.nickname:
+            if pre:
+                body = u"{0}: I am here ^ ^".format(pre)
+            else:
+                body = u"I am here ^ ^"
+            callback(body)
+
     def dispatch(self, qq_source):
         if qq_source.get("retcode") == 0:
             messages = qq_source.get("result")
