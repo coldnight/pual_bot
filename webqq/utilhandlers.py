@@ -14,8 +14,8 @@ class RunPyCodeHandler(WebQQHandler):
         self.callback = callback
         self.pre = pre
         self.code = code
-        #url = "http://pythonec.appspot.com/run"
-        url = "http://localhost:8080/run"
+        url = "http://pythonec.appspot.com/run"
+        #url = "http://localhost:8080/run"
         params = [("code", code)]
         method = "POST"
 
