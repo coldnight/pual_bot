@@ -10,7 +10,7 @@ import json
 import socket
 import httplib
 from .base import WebQQHandler
-from ..webqqevents import  WebQQPollEvent, WebQQMessageEvent
+from ..webqqevents import  WebQQPollEvent, WebQQMessageEvent, ReconnectEvent
 
 class PollHandler(WebQQHandler ):
     """ 获取消息 """
@@ -34,8 +34,8 @@ class PollHandler(WebQQHandler ):
             tmp = resp.read()
             data = json.loads(tmp)
             if data:
-                #if data.get("retcode") == 121:
-                #    self.webqq.event(ReconnectEvent(self))
+                if data.get("retcode") == 121:
+                    self.webqq.event(ReconnectEvent(self))
                 self.webqq.event(WebQQPollEvent(self))
                 self.webqq.event(WebQQMessageEvent(data, self))
         except ValueError:

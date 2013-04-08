@@ -9,7 +9,7 @@
 from functools import partial
 from utils import get_logger
 
-from utilhandlers import RunPyCodeHandler, PasteCodeHandler
+from utilhandlers import RunPyCodeHandler, PasteCodeHandler, CETranHandler
 
 code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
@@ -115,6 +115,20 @@ class MessageDispatch(object):
             else:
                 body = u"I am here ^ ^"
             callback(body)
+
+        if content.startswith("-tr"):
+            if content.startswith("-trw"):
+                web = True
+                st = "-trw"
+            else:
+                web = False
+                st = "-tr"
+            body = content.lstrip(st).strip()
+            handler = CETranHandler(self.webqq, source = body, web = web,
+                                    callback = callback, pre = pre)
+            self.webqq.mainloop.add_handler(handler)
+
+
 
     def dispatch(self, qq_source):
         if qq_source.get("retcode") == 0:

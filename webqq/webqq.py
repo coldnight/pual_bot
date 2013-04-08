@@ -330,5 +330,5 @@ class WebQQ(EventHandler):
 
     def make_msg_content(self, content):
         """ 构造QQ消息的内容 """
-        return json.dumps([content, ["font", {"name":"微软雅黑", "size":10,
+        return json.dumps([content, ["font", {"name":"Monospace", "size":10,
                                    "style":[0, 0, 0], "color":"000000"}]])
