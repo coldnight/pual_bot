@@ -120,7 +120,7 @@ class MessageDispatch(object):
                 body = u"I am here ^ ^"
             callback(body)
 
-        if content.strip() == "about" + self.webqq.nickname:
+        if content.strip() == "about " + self.webqq.nickname:
             body = ABOUT_STR
             callback(body)
 

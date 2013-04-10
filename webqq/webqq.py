@@ -321,7 +321,7 @@ class WebQQ(EventHandler):
 
     def send_group_msg(self, group_uin, content):
         """ 发送qq群消息 """
-        if len(content) > 120:
+        if len(content) > 150:
             callback = partial(self.send_group_msg, group_uin)
             handler = LongContentHandler(self, content = content, callback = callback)
         else:
@@ -331,7 +331,7 @@ class WebQQ(EventHandler):
 
     def send_buddy_msg(self, to_uin, content):
         """ 发送好友消息 """
-        if len(content) > 120:
+        if len(content) > 150:
             callback = partial(self.send_group_msg, to_uin)
             handler = LongContentHandler(self, content = content, callback = callback)
         else:
