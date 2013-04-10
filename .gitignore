@@ -11,3 +11,4 @@ tags
 *.db
 logs/
 .zcache/
+config.py
