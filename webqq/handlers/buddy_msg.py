@@ -10,7 +10,7 @@ import json
 from .base import WebQQHandler
 
 class BuddyMsgHandler(WebQQHandler):
-    """
+    """ 发送好友消息
     URL:
         http://d.web2.qq.com/channel/send_buddy_msg2
 

@@ -24,9 +24,13 @@ from __future__ import absolute_import, division
 __docformat__ = "restructuredtext en"
 
 import select
-if hasattr(select, "poll"):
-    # pylint: disable=W0404
-    from .poll import PollMainLoop as main_loop_factory
+
+if hasattr(select, "epoll"):
+    from .poll import EpollMainLoop as main_loop_factory
 else:
-    # pylint: disable=W0404
-    from .select import SelectMainLoop as main_loop_factory
+    if hasattr(select, "poll"):
+        # pylint: disable=W0404
+        from .poll import PollMainLoop as main_loop_factory
+    else:
+        # pylint: disable=W0404
+        from .select import SelectMainLoop as main_loop_factory

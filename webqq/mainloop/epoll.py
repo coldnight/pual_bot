@@ -104,16 +104,14 @@ class EpollMainLoop(MainLoopBase):
 
     def loop_iteration(self, timeout = 60):
         next_timeout, sources_handled = self._call_timeout_handlers()
-        if self.check_events():
-            return
         if self._quit:
             return sources_handled
-        for handler in list(self._unprepared_handlers):
-            self._configure_io_handler(handler)
         if self._timeout is not None:
             timeout = min(timeout, self._timeout)
         if next_timeout is not None:
             timeout = min(next_timeout, timeout)
+        for handler in list(self._unprepared_handlers):
+            self._configure_io_handler(handler)
 
         if timeout == 0:
             timeout += 1    # 带有超时的非阻塞,解约资源

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 #
-#   Author  :   Wood.D Wong
+#   Author  :   cold
 #   E-mail  :   wh_linux@126.com
 #   Date    :   13/04/02 15:31:15
 #   Desc    :   程序接口
