@@ -20,7 +20,7 @@ class RunPyCodeHandler(WebQQHandler):
         self.code = code
         url = "http://pythonec.appspot.com/run"
         #url = "http://localhost:8080/run"
-        params = [("code", code)]
+        params = [("code", code.encode("utf-8"))]
         method = "POST"
 
         self.make_http_sock(url, params, method, {})
@@ -57,7 +57,7 @@ class PasteCodeHandler(WebQQHandler):
         self.pre = pre
 
         self.url = "http://paste.linuxzen.com"
-        params = [("class", typ), ("code", code), ("paste", "ff")]
+        params = [("class", typ), ("code", code.encode("utf-8")), ("paste", "ff")]
         method = "POST"
 
         self.make_http_sock(self.url, params, method, {})
