@@ -74,11 +74,44 @@ class PasteCodeHandler(WebQQHandler):
         resp = self.make_http_resp()
         if resp.code == 302:
             url = resp.headers.get("Location")
-
         else:
             url = resp.url
         if url != self.url:
             content = url
+            if self.pre: content = self.pre + content
+            self.callback(content)
+
+class LongContentHandler(WebQQHandler):
+    def setup(self, content = None, callback = None):
+        self.callback = callback
+        sp = content.split(":")
+        if len(sp) >= 2:
+            self.pre = sp[0]
+            self.content = ":".join(sp[1:])
+        else:
+            self.pre = None
+            self.content = ":".join(sp)
+
+        self.url = "http://paste.linuxzen.com"
+        params = [("class", "text"), ("code", content.encode("utf-8")),
+                  ("paste", "ff")]
+        method = "POST"
+
+        self.make_http_sock(self.url, params, method, {})
+
+    def handle_write(self):
+        super(LongContentHandler, self).handle_write(content = self.content,
+                                                     callback = self.callback)
+
+    def handle_read(self):
+        self._readable = False
+        resp = self.make_http_resp()
+        if resp.code == 302:
+            url = resp.headers.get("Location")
+        else:
+            url = resp.url
+        if url != self.url:
+            content = u"内容过长, 贴到:{0}".format(url)
             if self.pre: content = self.pre + content
             self.callback(content)
 

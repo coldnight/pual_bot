@@ -31,6 +31,8 @@ from .handlers import (CheckHandler, BeforeLoginHandler, LoginHandler,
                        GroupListHandler, GroupMembersHandler, WebQQHandler,
                        FriendsHandler, BuddyMsgHandler)
 
+from utilhandlers import LongContentHandler
+
 
 class WebQQ(EventHandler):
     """ WebQQ
@@ -319,13 +321,21 @@ class WebQQ(EventHandler):
 
     def send_group_msg(self, group_uin, content):
         """ 发送qq群消息 """
-        handler = GroupMsgHandler(self, group_uin = group_uin,
+        if len(content) > 120:
+            callback = partial(self.send_group_msg, group_uin)
+            handler = LongContentHandler(content = content, callback = callback)
+        else:
+            handler = GroupMsgHandler(self, group_uin = group_uin,
                                   content = content)
         self.mainloop.add_handler(handler)
 
     def send_buddy_msg(self, to_uin, content):
         """ 发送好友消息 """
-        handler = BuddyMsgHandler(self, to_uin = to_uin, content = content)
+        if len(content) > 120:
+            callback = partial(self.send_group_msg, group_uin)
+            handler = LongContentHandler(content = content, callback = callback)
+        else:
+            handler = BuddyMsgHandler(self, to_uin = to_uin, content = content)
         self.mainloop.add_handler(handler)
 
     def make_msg_content(self, content):
