@@ -110,9 +110,14 @@ class CETranHandler(WebQQHandler):
     def handle_read(self):
         self._readable = False
         resp = self.make_http_resp()
-        buf = StringIO(resp.read())
-        with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
-            data = gf.read()
+        source = resp.read()
+        try:
+            buf = StringIO(source)
+            with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
+                data = gf.read()
+        except:
+            data = source
+
         try:
             result = json.loads(data)
         except ValueError:
