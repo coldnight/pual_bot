@@ -18,6 +18,10 @@ code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'scheme', 'smalltalk', 'smarty', 'sql', 'sqlite3', 'squid',
               'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
 
+ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
+        u"HomePage  :   http://www.linuxzen.com\n"\
+        u"Project@  :   https://github.com/coldnight/pual_bot"
+
 class MessageDispatch(object):
     """ 消息调度器 """
     def __init__(self, webqq):
@@ -114,6 +118,10 @@ class MessageDispatch(object):
                 body = u"{0}: I am here ^ ^".format(pre)
             else:
                 body = u"I am here ^ ^"
+            callback(body)
+
+        if content.strip() == "about" + self.webqq.nickname:
+            body = ABOUT_STR
             callback(body)
 
         if content.startswith("-tr"):

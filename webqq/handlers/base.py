@@ -14,6 +14,12 @@ from ..webqqevents import RetryEvent, RemoveEvent
 
 
 class WebQQHandler(IOHandler):
+    """ WebQQ Handler 基类, 所有Handler必须继承此基类
+    Arguments:
+        `webqq`      -           webqq.webqq.WebQQ 的实例
+        `req`        -           urllib2.Request实例, 如传递则不构建新的请求
+        `*args` `**kwargs` -     传递给初始化函数的参数
+    """
     http_sock = HTTPSock()
     def __init__(self, webqq, req = None, *args, **kwargs):
         self.req = req
@@ -69,6 +75,7 @@ class WebQQHandler(IOHandler):
             pass
 
     def handle_write(self, *args, **kwargs):
+        """ 处理socket 写, 所有参数用于传递给重试时使用 """
         self._writable = False
         try:
             self.sock.sendall(self.data)
