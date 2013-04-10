@@ -112,7 +112,7 @@ class LongContentHandler(WebQQHandler):
             url = resp.url
         if url != self.url:
             content = u"内容过长, 贴到:{0}".format(url)
-            if self.pre: content = self.pre + content
+            if self.pre: content = self.pre + u": " + content
             self.callback(content)
 
 
