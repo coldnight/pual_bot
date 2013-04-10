@@ -26,7 +26,7 @@ __docformat__ = "restructuredtext en"
 import select
 
 if hasattr(select, "epoll"):
-    from .poll import EpollMainLoop as main_loop_factory
+    from .epoll import EpollMainLoop as main_loop_factory
 else:
     if hasattr(select, "poll"):
         # pylint: disable=W0404
