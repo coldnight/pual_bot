@@ -9,7 +9,6 @@
 import json
 import socket
 from .base import WebQQHandler
-from ..webqqevents import RetryEvent
 
 class GroupMsgHandler(WebQQHandler):
     def setup(self, group_uin = None, content = None):
@@ -28,8 +27,7 @@ class GroupMsgHandler(WebQQHandler):
         params = [("r", json.dumps(r)), ("sessionid", self.webqq.psessionid),
                 ("clientid", self.webqq.clientid)]
         headers = {"Referer": "http://d.web2.qq.com/proxy.html"}
-        self.make_http_sock(url, params, "POST", headers, self.group_uin,
-                            self.content)
+        self.make_http_sock(url, params, "POST", headers)
 
     def handle_write(self):
         self._writable = False

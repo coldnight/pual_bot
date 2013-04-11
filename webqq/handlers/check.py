@@ -21,7 +21,7 @@ class CheckHandler(WebQQHandler):
         url = "http://check.ptlogin2.qq.com/check"
         params = {"uin":self.webqq.qid, "appid":self.webqq.aid,
                   "r" : random.random()}
-        self.make_http_sock(url, params, "GET", {})
+        self.make_http_sock(url, params, "GET")
 
     def handle_read(self):
         self._readable = False

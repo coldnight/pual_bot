@@ -20,7 +20,7 @@ class HeartbeatHandler(WebQQHandler):
         params = [("uin", ""), ("tp", 1), ("id", 0), ("retype", 1),
                     ("rc", self.webqq.rc), ("lv", 2),
                 ("t", int(self.webqq.hb_last_time * 1000))]
-        self.make_http_sock(url, params, "GET", {})
+        self.make_http_sock(url, params, "GET")
 
     def handle_write(self):
         self._writable = False

@@ -44,8 +44,7 @@ class GroupMembersHandler(WebQQHandler):
             "Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"
         }
-        self.make_http_sock(url, params, "GET", headers, self.gcode,
-                                self.done)
+        self.make_http_sock(url, params, "GET", headers)
 
     def handle_write(self):
         super(GroupMembersHandler, self).handle_write(self.gcode, self.done)
