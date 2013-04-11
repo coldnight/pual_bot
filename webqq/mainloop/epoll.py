@@ -20,7 +20,7 @@ class EpollMainLoop(MainLoopBase):
         self.READ_ONLY = (select.EPOLLIN | select.EPOLLPRI | select.EPOLLHUP |
                     select.EPOLLERR |select.EPOLLET)
         self.READ_WRITE = self.READ_ONLY | select.EPOLLOUT
-        self.WRITE_ONLY = select.EPOLLOUT
+        self.WRITE_ONLY = select.EPOLLOUT | select.EPOLLPRI | select.EPOLLET
         self.epoll = select.epoll()
         self._handlers = {}
         self._unprepared_handlers = {}
@@ -62,9 +62,9 @@ class EpollMainLoop(MainLoopBase):
             events |= self.READ_ONLY
         if handler.is_writable():
             self.logger.debug(" {0!r} writable".format(handler))
-            events |= self.READ_WRITE
+            events |= self.WRITE_ONLY
 
-        if events is not None: # events may be 0
+        if events: # events may be 0
             if fileno in self._exists_fd:
                 self.epoll.modify(fileno, events)
             else:
