@@ -35,3 +35,4 @@ class GroupListHandler(WebQQHandler):
             self.retry_self(err)
         else:
             self.webqq.event(GroupListEvent(self, data), self.delay)
+            self.remove_self()

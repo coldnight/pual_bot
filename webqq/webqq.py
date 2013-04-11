@@ -217,7 +217,6 @@ class WebQQ(EventHandler):
     @event_handler(GroupListEvent)
     def handle_webqq_group_list(self, event):
         """ 获取群列表后"""
-        self.mainloop.remove_handler(event.handler)
         data = event.data
         group_map = {}
         if data.get("retcode") == 0:
@@ -262,7 +261,6 @@ class WebQQ(EventHandler):
     @event_handler(WebQQRosterUpdatedEvent)
     def handle_webqq_roster(self, event):
         """ 群成员都获取完毕后开启,Poll获取消息和心跳 """
-        self.mainloop.remove_handler(event.handler)
         self.msg_dispatch.get_map()
         if not self.polled:
             self.polled = True
@@ -282,7 +280,6 @@ class WebQQ(EventHandler):
     @event_handler(WebQQPollEvent)
     def handle_webqq_poll(self, event):
         """ 延迟1秒重复触发此事件, 轮询获取消息 """
-        self.mainloop.remove_handler(event.handler)
         self.mainloop.add_handler(PollHandler(self))
 
     @event_handler(WebQQMessageEvent)

@@ -8,9 +8,8 @@
 #
 import time
 import json
-import socket
 from .base import WebQQHandler
-from ..webqqevents import RetryEvent, WebQQRosterUpdatedEvent, GroupMembersEvent
+from ..webqqevents import WebQQRosterUpdatedEvent, GroupMembersEvent
 
 class GroupMembersHandler(WebQQHandler):
     """ 获取组成员
@@ -61,6 +60,7 @@ class GroupMembersHandler(WebQQHandler):
         except ValueError, err:
             self.retry_self(err)
         else:
+            self.remove_self()
             self.webqq.event(GroupMembersEvent(self, data, self.gcode))
             if self.done:
                 self.webqq.gm_updated = True

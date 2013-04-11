@@ -8,7 +8,7 @@
 #
 import json
 from .base import WebQQHandler
-from ..webqqevents import WebQQRosterUpdatedEvent, FriendsUpdatedEvent, RetryEvent
+from ..webqqevents import WebQQRosterUpdatedEvent, FriendsUpdatedEvent
 
 class FriendsHandler(WebQQHandler):
     """ 获取好友列表
@@ -43,6 +43,7 @@ class FriendsHandler(WebQQHandler):
         except ValueError, err:
             self.retry_self(err)
         else:
+            self.remove_self()
             self.webqq.event(FriendsUpdatedEvent(self, data))
             self.webqq.fm_updated = True
             if self.webqq.gm_updated:

@@ -122,7 +122,7 @@ class EpollMainLoop(MainLoopBase):
         for fd, flag in events:
             if flag & (select.EPOLLIN | select.EPOLLPRI | select.EPOLLET):
                 self._handlers[fd].handle_read()
-            if flag & (select.EPOLLOUT|select.EPOLLET):
+            if flag & (select.EPOLLOUT|select.EPOLLET | select.EPOLLPRI):
                 self._handlers[fd].handle_write()
             if flag & (select.EPOLLERR | select.EPOLLET):
                 self._handlers[fd].handle_err()

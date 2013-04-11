@@ -44,6 +44,8 @@ class PollHandler(WebQQHandler ):
             self.webqq.event(WebQQPollEvent(self))
         except httplib.BadStatusLine:
             pass
+        else:
+            self.remove_self()
 
     def is_writable(self):
         with self.lock:
