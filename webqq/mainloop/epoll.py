@@ -48,7 +48,10 @@ class EpollMainLoop(MainLoopBase):
         if old_fileno is not None and fileno != old_fileno:
             del self._handlers[old_fileno]
             self._exists_fd.pop(old_fileno, None)
-            self.epoll.unregister(old_fileno)
+            try:
+                self.epoll.unregister(old_fileno)
+            except KeyError:
+                pass
         if not prepared:
             self._unprepared_handlers[handler] = fileno
 
@@ -64,7 +67,7 @@ class EpollMainLoop(MainLoopBase):
             self.logger.debug(" {0!r} writable".format(handler))
             events |= self.READ_WRITE
 
-        if events is not None: # events may be 0
+        if events: # events may be 0
             if fileno in self._exists_fd:
                 self.epoll.modify(fileno, events)
             else:
