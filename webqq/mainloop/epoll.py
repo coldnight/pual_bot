@@ -69,7 +69,10 @@ class EpollMainLoop(MainLoopBase):
 
         if events: #FIXME events may be 0
             if fileno in self._exists_fd:
-                self.epoll.modify(fileno, events)
+                try:
+                    self.epoll.modify(fileno, events)
+                except IOError, err:
+                    handler.retry_self(err)
             else:
                 self._exists_fd.update({fileno:1})
                 self.epoll.register(fileno, events)
