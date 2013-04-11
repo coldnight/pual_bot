@@ -25,7 +25,7 @@ class GroupListHandler(WebQQHandler):
         self._readable = False
 
         try:
-            resp = self.make_resp()
+            resp = self.make_http_resp()
             tmp = resp.read()
             data = json.loads(tmp)
         except ValueError:
