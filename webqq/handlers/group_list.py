@@ -7,6 +7,7 @@
 #   Desc    :   组列表
 #
 import json
+import httplib
 from .base import WebQQHandler
 from ..webqqevents import  GroupListEvent
 
@@ -28,7 +29,9 @@ class GroupListHandler(WebQQHandler):
             resp = self.make_http_resp()
             tmp = resp.read()
             data = json.loads(tmp)
-        except ValueError:
-            self.retry_self()
+        except ValueError, err:
+            self.retry_self(err)
+        except httplib.BadStatusLine, err:
+            self.retry_self(err)
         else:
             self.webqq.event(GroupListEvent(self, data), self.delay)
