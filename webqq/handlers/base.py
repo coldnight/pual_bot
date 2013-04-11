@@ -29,6 +29,8 @@ class WebQQHandler(IOHandler):
         self.lock = threading.RLock()
         self._cond = threading.Condition(self.lock)
         self.old_fileno = None
+        self.retry_args = []             # 重试时传递的参数
+        self.retry_kwargs = {}           # 重试时传递的关键字形参
         self.setup(*args, **kwargs)      # 子类初始化接口
 
     def fileno(self):
@@ -80,8 +82,7 @@ class WebQQHandler(IOHandler):
         try:
             self.sock.sendall(self.data)
         except socket.error, err:
-            self.webqq.event(RetryEvent(self.__class__, self.req, self,
-                                        err, *args, **kwargs))
+            self.retry_self(err)
         else:
             self._readable = True
 
@@ -105,13 +106,16 @@ class WebQQHandler(IOHandler):
 
     def make_http_resp(self):
         """ 构造http Response """
-        return self.http_sock.make_response(self.sock, self.req, self.method)
+        try:
+            return self.http_sock.make_response(self.sock, self.req, self.method)
+        except Exception, err:
+            self.retry_self(err)
 
-    def retry_self(self, err, *args, **kwargs):
+    def retry_self(self, err):
         self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
-                                    *args, **kwargs))
+                                *self.retry_args, **self.retry_kwargs))
 
-    def make_http_sock(self, url, params, method, headers = {}, *args, **kwargs):
+    def make_http_sock(self, url, params, method, headers = {}):
         """ 构造HTTP SOCKET
         Arguments:
             `url`      -        请求的url
@@ -128,7 +132,7 @@ class WebQQHandler(IOHandler):
         try:
             self.sock, self.data = self.http_sock.make_http_sock_data(self.req)
         except socket.error, err:
-            self.retry_self(err, *args, **kwargs)
+            self.retry_self(err)
             self._writable = False
             self.sock = None
             self.data = None

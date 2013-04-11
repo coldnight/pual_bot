@@ -67,7 +67,7 @@ class EpollMainLoop(MainLoopBase):
             self.logger.debug(" {0!r} writable".format(handler))
             events |= self.WRITE_ONLY
 
-        if events: # events may be 0
+        if events: #FIXME events may be 0
             if fileno in self._exists_fd:
                 self.epoll.modify(fileno, events)
             else:

@@ -28,6 +28,7 @@ class GroupListHandler(WebQQHandler):
             resp = self.http_sock.make_response(self.sock, self.req, self.method)
             tmp = resp.read()
             data = json.loads(tmp)
-            self.webqq.event(GroupListEvent(self, data), self.delay)
         except ValueError:
-            pass
+            self.retry_self()
+        else:
+            self.webqq.event(GroupListEvent(self, data), self.delay)

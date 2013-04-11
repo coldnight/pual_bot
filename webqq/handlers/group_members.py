@@ -35,6 +35,7 @@ class GroupMembersHandler(WebQQHandler):
         """
         self.done = done
         self.gcode = gcode
+        self.retry_args = (self.gcode, self.done)
 
         url = "http://s.web2.qq.com/api/get_group_info_ext2"
         params = [("gcode", gcode),("vfwebqq", self.webqq.vfwebqq),
@@ -58,9 +59,8 @@ class GroupMembersHandler(WebQQHandler):
             tmp = resp.read()
             self.sock.setblocking(0)
             data = json.loads(tmp)
-        except ValueError:
-            self.webqq.event(RetryEvent(GroupMembersHandler, self.req,
-                                        self, self.gcode, self.done))
+        except ValueError, err:
+            self.retry_self(err)
         else:
             self.webqq.event(GroupMembersEvent(self, data, self.gcode))
             if self.done:

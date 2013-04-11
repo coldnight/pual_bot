@@ -41,7 +41,7 @@ class FriendsHandler(WebQQHandler):
             resp = self.http_sock.make_response(self.sock, self.req, self.method)
             data = json.loads(resp.read())
         except ValueError, err:
-            self.webqq.event(RetryEvent(self.__class__, self.req, self, err))
+            self.retry_self(err)
         else:
             self.webqq.event(FriendsUpdatedEvent(self, data))
             self.webqq.fm_updated = True

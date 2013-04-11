@@ -276,7 +276,6 @@ class WebQQ(EventHandler):
     @event_handler(WebQQHeartbeatEvent)
     def handle_webqq_hb(self, event):
         """ 心跳完毕后, 延迟60秒在此触发此事件 重复心跳 """
-        self.mainloop.remove_handler(event.handler)
         self.hb_handler = HeartbeatHandler(self, delay = 60)
         self.mainloop.add_handler(self.hb_handler)
 

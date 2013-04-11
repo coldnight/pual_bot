@@ -17,6 +17,7 @@ class GroupMsgHandler(WebQQHandler):
         self.content = content
         assert group_uin
         assert content
+        self.retry_args = (group_uin, content)
         gid = self.webqq.group_map.get(group_uin).get("gid")
         content = self.webqq.make_msg_content(content)
         r = {"group_uin": gid, "content": content,
@@ -37,7 +38,6 @@ class GroupMsgHandler(WebQQHandler):
             try:
                 self.sock.sendall(self.data)
             except socket.error, err:
-                self.webqq.event(RetryEvent(self.__class__, self.req, self,
-                                           err, self.group_uin, self.content))
+                self.retry_self(err)
             else:
                 self.remove_self()
