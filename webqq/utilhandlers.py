@@ -68,7 +68,11 @@ class PasteCodeHandler(WebQQHandler):
 
     def handle_read(self):
         self._readable = False
-        resp = self.make_http_resp()
+        try:
+            resp = self.make_http_resp()
+        except Exception, err:
+            self.retry_self(err)
+
         if resp.code == 302:
             url = resp.headers.get("Location")
         else:
