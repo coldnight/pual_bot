@@ -136,10 +136,7 @@ class CETranHandler(WebQQHandler):
             resp = self.make_http_resp()
         except Exception, err:
             self.retry_self(err)
-        try:
-            source = resp.read()
-        except socket.error:
-            self._readable = True
+        source = resp.read()
         try:
             buf = StringIO(source)
             with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
