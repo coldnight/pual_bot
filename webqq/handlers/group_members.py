@@ -45,9 +45,6 @@ class GroupMembersHandler(WebQQHandler):
         }
         self.make_http_sock(url, params, "GET", headers)
 
-    def handle_write(self):
-        super(GroupMembersHandler, self).handle_write(self.gcode, self.done)
-
     def handle_read(self):
         self._readable = False
 

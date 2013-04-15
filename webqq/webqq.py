@@ -32,17 +32,23 @@ from .handlers import (CheckHandler, BeforeLoginHandler, LoginHandler,
                        FriendsHandler, BuddyMsgHandler)
 
 from utilhandlers import LongContentHandler
+from .config import MAX_LENGTH
 
 
 class WebQQ(EventHandler):
-    """ WebQQ
-    :param :qid QQ号
-    :param :event_queue pyxmpp2时间队列"""
-    def __init__(self, qid, pwd, event_queue = None):
-        if event_queue:
-            self.event_queue = event_queue
-        else:
-            self.event_queue = Queue.Queue()
+    """ WebQQ 接口, 用于添加处理器和相应一系列事件来连接WebQQ, 实现QQ登录
+    Arguments:
+        `qid`   -   QQ 号码
+        `pwd`   -   QQ 密码
+        `event_queue`   -   事件队列
+        `main_loop`     -   主循环
+    """
+
+    def __init__(self, qid, pwd, event_queue = None, main_loop = None):
+        self.event_queue = event_queue or Queue.Queue()
+        self.mainloop = main_loop or main_loop_factory(self.event_queue)
+        self.mainloop.add_handler(self)
+
         self.logger = get_logger()
         self.qid = qid                # QQ 号
         self.__pwd = pwd
@@ -70,8 +76,6 @@ class WebQQ(EventHandler):
         self.heartbeated = False
         self.group_lst_updated = False
         self.msg_dispatch = MessageDispatch(self)
-        self.mainloop = main_loop_factory(self.event_queue)
-        self.mainloop.add_handler(self)
         self.http_sock = WebQQHandler.http_sock
 
         self.gm_updated = False       # 组成员已更新
@@ -80,7 +84,11 @@ class WebQQ(EventHandler):
         self.fm_info_map = {}         # 好友信息映射
 
     def event(self, event, delay = 0):
-        """ timeout可以延迟将事件放入事件队列 """
+        """ 将事件加入到事件队列
+        Arguments:
+            `event` -   事件
+            `delay` -   延迟时间(单位为秒)
+        """
         if delay:
             target = partial(self.put_delay_event, self.event_queue, event, delay)
             t = threading.Thread(target = target)
@@ -90,7 +98,12 @@ class WebQQ(EventHandler):
             self.event_queue.put(event)
 
     def put_delay_event(self, queue, event, delay):
-        """ 应当放入线程中 """
+        """ 延迟事件放入队列, 为不阻塞主线程, 此函数调用应当放入线程中
+        Arguments:
+            `queue`     -   事件队列
+            `event`     -   事件
+            `delay`     -   延迟事件(单位为秒)
+        """
         time.sleep(delay)
         queue.put(event)
 
@@ -317,7 +330,7 @@ class WebQQ(EventHandler):
 
     def send_group_msg(self, group_uin, content):
         """ 发送qq群消息 """
-        if len(content) > 150:
+        if len(content) > MAX_LENGTH:
             callback = partial(self.send_group_msg, group_uin)
             handler = LongContentHandler(self, content = content, callback = callback)
         else:
@@ -327,7 +340,7 @@ class WebQQ(EventHandler):
 
     def send_buddy_msg(self, to_uin, content):
         """ 发送好友消息 """
-        if len(content) > 150:
+        if len(content) > MAX_LENGTH:
             callback = partial(self.send_group_msg, to_uin)
             handler = LongContentHandler(self, content = content, callback = callback)
         else:

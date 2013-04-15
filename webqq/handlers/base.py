@@ -76,7 +76,7 @@ class WebQQHandler(IOHandler):
         with self.lock:
             pass
 
-    def handle_write(self, *args, **kwargs):
+    def handle_write(self):
         """ 处理socket 写, 所有参数用于传递给重试时使用 """
         self._writable = False
         try:
@@ -112,7 +112,7 @@ class WebQQHandler(IOHandler):
         self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
                                 *self.retry_args, **self.retry_kwargs))
 
-    def make_http_sock(self, url, params, method, headers = {}):
+    def make_http_sock(self, url, params = {}, method = "GET", headers = {}):
         """ 构造HTTP SOCKET
         Arguments:
             `url`      -        请求的url

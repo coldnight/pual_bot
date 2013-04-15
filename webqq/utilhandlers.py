@@ -8,26 +8,27 @@
 #
 import gzip
 import json
+import socket
 
 from cStringIO import StringIO
 
 from handlers.base import WebQQHandler
+
+from .config import YOUDAO_KEY, YOUDAO_KEYFROM
 
 class RunPyCodeHandler(WebQQHandler):
     def setup(self, code = None, callback = None, pre= None):
         self.callback = callback
         self.pre = pre
         self.code = code
+        self.retry_kwargs = {"code":self.code, "callback":self.callback,
+                             "pre":pre}
         url = "http://pythonec.appspot.com/run"
         #url = "http://localhost:8080/run"
         params = [("code", code.encode("utf-8"))]
         method = "POST"
 
         self.make_http_sock(url, params, method, {})
-
-    def handle_write(self):
-        super(RunPyCodeHandler, self).handle_write(code = self.code,
-                                                   callback = self.callback)
 
     def handle_read(self):
         self._readable = False
@@ -55,6 +56,8 @@ class PasteCodeHandler(WebQQHandler):
         self.typ = typ
         self.callback = callback
         self.pre = pre
+        self.retry_kwargs = {"code":code, "typ": typ, "callback":callback,
+                             "pre":pre}
 
         self.url = "http://paste.linuxzen.com"
         params = [("class", typ), ("code", code.encode("utf-8")), ("paste", "ff")]
@@ -62,12 +65,6 @@ class PasteCodeHandler(WebQQHandler):
 
         self.make_http_sock(self.url, params, method, {})
 
-
-    def handle_write(self):
-        super(PasteCodeHandler, self).handle_write(code = self.code,
-                                                   typ = self.typ,
-                                                   callback = self.callback,
-                                                   pre = self.pre)
 
     def handle_read(self):
         self._readable = False
@@ -84,6 +81,7 @@ class PasteCodeHandler(WebQQHandler):
 class LongContentHandler(WebQQHandler):
     def setup(self, content = None, callback = None):
         self.callback = callback
+        self.retry_kwargs = {"content":content, "callback":callback}
         sp = content.split(":")
         if len(sp) >= 2:
             self.pre = sp[0]
@@ -98,10 +96,6 @@ class LongContentHandler(WebQQHandler):
         method = "POST"
 
         self.make_http_sock(self.url, params, method, {})
-
-    def handle_write(self):
-        super(LongContentHandler, self).handle_write(content = self.content,
-                                                     callback = self.callback)
 
     def handle_read(self):
         self._readable = False
@@ -123,9 +117,11 @@ class CETranHandler(WebQQHandler):
         self.callback = callback
         self.pre = pre
         self.web = web
+        self.retry_kwargs = {"source":source, "web":web, "callback":callback,
+                             "pre":pre}
 
-        key = 1667350065
-        keyfrom = "coldsblog"
+        key = YOUDAO_KEY
+        keyfrom = YOUDAO_KEYFROM
         source = source.encode("utf-8")
         url = "http://fanyi.youdao.com/openapi.do"
         params = [("keyfrom", keyfrom), ("key", key),("type", "data"),
@@ -133,12 +129,6 @@ class CETranHandler(WebQQHandler):
         method = "GET"
         headers = {"Accept-Language": "zh-CN,zh;q=0.8"}
         self.make_http_sock(url, params, method, headers)
-
-
-    def handle_write(self):
-        super(CETranHandler, self).handle_write(source = self.source,
-                                                callback = self.callback,
-                                                pre = self.pre)
 
     def handle_read(self):
         self._readable = False
@@ -189,3 +179,27 @@ class CETranHandler(WebQQHandler):
 
 
 
+class FetchURLInfoHandler(WebQQHandler):
+    """ 跟踪网址, 获取网址的信息比如:标题, 如果是图片, 图片信息 """
+    def setup(self, url, callback, pre = None):
+        self.url = url
+        self.callback = callback
+        self.pre = pre
+        self.make_http_sock(url)
+
+
+    def handle_write(self):
+        self._writable = False
+        try:
+            self.sock.sendall(self.data)
+        except socket.error, err:
+            body = u"<{0}>".format(err)
+            if self.pre:
+                body = u"{0}: {1}".format(self.pre, body)
+            self.callback(body)
+        else:
+            self._readable = True
+
+    def handle_read(self):
+        self._readable = False
+        resp = self.make_http_resp()

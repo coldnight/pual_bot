@@ -6,7 +6,7 @@
 #   Date    :   13/04/02 15:31:15
 #   Desc    :   程序接口
 #
-from config import QQ, QQ_PWD
+from webqq.config import QQ, QQ_PWD
 from webqq.webqq import WebQQ
 
 if __name__ == "__main__":

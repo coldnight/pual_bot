@@ -5,3 +5,14 @@ QQ = 123456
 
 # QQ 密码
 QQ_PWD = ""
+
+# 下面是有道辞典需要的api, 可以到下面网站申请一个key和keyfrom
+# http://fanyi.youdao.com/openapi
+YOUDAO_KEY = 1234567890
+
+YOUDAO_KEYFROM = "pualbot"
+
+
+# 允许机器人发送消息的最大长度
+# 此配置避免结果过长在群内造成刷屏
+MAX_LENGTH = 150
