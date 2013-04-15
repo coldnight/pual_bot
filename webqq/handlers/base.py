@@ -108,7 +108,7 @@ class WebQQHandler(IOHandler):
         """ 构造http Response """
         return self.http_sock.make_response(self.sock, self.req, self.method)
 
-    def retry_self(self, err):
+    def retry_self(self, err = ""):
         self.webqq.event(RetryEvent(self.__class__, self.req, self, err,
                                 *self.retry_args, **self.retry_kwargs))
 
