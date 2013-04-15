@@ -3,3 +3,7 @@ pual_bot是建立在[pyxmpp2](https://github.com/Jajcus/pyxmpp2)一套事件循�
 
 # 安装配置
 将`config.py.example`移动到`webqq`目录下并重命名为 `config.py`, 填入QQ号码和密码配置, 执行main.py脚本. 程序不依赖第三方库, Linux+ Python2.7.2 开发, 其他平台未测试不确保正确运行
+
+# 更新
+* `config.py`放到webqq/ 目录下
+* 翻译需要自己申请key, 申请连接在 `config.py.example`
