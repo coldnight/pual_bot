@@ -176,30 +176,3 @@ class CETranHandler(WebQQHandler):
 
         if self.pre: body = self.pre + body
         self.callback(body)
-
-
-
-class FetchURLInfoHandler(WebQQHandler):
-    """ 跟踪网址, 获取网址的信息比如:标题, 如果是图片, 图片信息 """
-    def setup(self, url, callback, pre = None):
-        self.url = url
-        self.callback = callback
-        self.pre = pre
-        self.make_http_sock(url)
-
-
-    def handle_write(self):
-        self._writable = False
-        try:
-            self.sock.sendall(self.data)
-        except socket.error, err:
-            body = u"<{0}>".format(err)
-            if self.pre:
-                body = u"{0}: {1}".format(self.pre, body)
-            self.callback(body)
-        else:
-            self._readable = True
-
-    def handle_read(self):
-        self._readable = False
-        resp = self.make_http_resp()
