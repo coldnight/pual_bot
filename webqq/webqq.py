@@ -305,7 +305,10 @@ class WebQQ(EventHandler):
         """ 有handler触发异常, 需重试 """
         times = event.get_retry_times()
         if times <= 10:
-            self.mainloop.remove_handler(event.handler)
+            try:
+                self.mainloop.remove_handler(event.handler)
+            except IOError:
+                pass
             handler = event.cls(self, event.req, *event.args, **event.kwargs)
             self.mainloop.add_handler(handler)
         else:
