@@ -16,3 +16,6 @@ YOUDAO_KEYFROM = "pualbot"
 # 允许机器人发送消息的最大长度
 # 此配置避免结果过长在群内造成刷屏
 MAX_LENGTH = 150
+
+# 机器人接收内容超过这个长度将贴到网上
+MAX_RECEIVER_LENGTH = 300

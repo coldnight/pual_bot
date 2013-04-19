@@ -9,6 +9,7 @@
 from functools import partial
 
 from command import Command
+from config import MAX_RECEIVER_LENGTH
 
 
 code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
@@ -103,6 +104,9 @@ class MessageDispatch(object):
                 st = "-tr"
             body = content.lstrip(st).strip()
             self.cmd.cetr(body, callback, web)
+
+        if len(content) > MAX_RECEIVER_LENGTH:
+            self.cmd.paste(code, callback)
 
 
     def dispatch(self, qq_source):

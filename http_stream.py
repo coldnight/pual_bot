@@ -268,6 +268,7 @@ class HTTPStream(object):
                 import sys
                 sys.exit(1)
             args = readback(resp)
+            s.setblocking(False)
             if args and len(args) == 3:
                 t = threading.Thread(target = self.add_delay_request, args = args)
                 t.setDaemon(True)
