@@ -405,7 +405,7 @@ class WebQQ(object):
         """ 处理消息 """
         data = resp.read()
         try:
-            msg = json.loads()
+            msg = json.loads(data)
             logging.info("Got message {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
