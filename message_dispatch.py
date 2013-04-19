@@ -87,10 +87,7 @@ class MessageDispatch(object):
             self.cmd.paste(code, callback, typ)
 
         if content.strip() == "ping " + self.webqq.nickname:
-            if pre:
-                body = u"{0}: I am here ^ ^".format(pre)
-            else:
-                body = u"I am here ^ ^"
+            body = u"I am here ^ ^"
             callback(body)
 
         if content.strip() == "about " + self.webqq.nickname:
