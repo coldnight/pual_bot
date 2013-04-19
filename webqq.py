@@ -406,6 +406,9 @@ class WebQQ(object):
         data = resp.read()
         try:
             msg = json.loads(data)
+            if msg.get("retcode") == 121:
+                self.restart()
+                return
             logging.info("Got message {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
@@ -533,6 +536,15 @@ class WebQQ(object):
     def run(self):
         self.check()
         self.http_stream.start()
+
+    def stop(self):
+        self.http_stream.ioloop.stop()
+
+
+    def restart(self):
+        logging.warn("Restart webqq")
+        self.stop()
+        self.run()
 
 
 if __name__ == "__main__":
