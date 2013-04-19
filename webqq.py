@@ -403,9 +403,13 @@ class WebQQ(object):
 
     def handle_msg(self, resp, next_req):
         """ 处理消息 """
-        msg = json.loads(resp.read())
-        logging.info("Got message {0!r}".format(msg))
-        self.msg_dispatch.dispatch(msg)
+        data = resp.read()
+        try:
+            msg = json.loads()
+            logging.info("Got message {0!r}".format(msg))
+            self.msg_dispatch.dispatch(msg)
+        except ValueError:
+            logging.error(u"Message can't loads: %s", data)
 
         return next_req, partial(self.handle_msg, next_req = next_req)
 

@@ -16,6 +16,7 @@ import urllib2
 import httplib
 import urlparse
 import tempfile
+import logging
 import cookielib
 import threading
 import mimetools
@@ -25,6 +26,7 @@ import itertools
 from functools import partial
 from tornado.ioloop import IOLoop
 
+logging.basicConfig(level = logging.DEBUG)
 
 class Form(object):
     def __init__(self):
@@ -267,6 +269,10 @@ class HTTPStream(object):
             except httplib.BadStatusLine:
                 import sys
                 sys.exit(1)
+            except Exception, err:
+                logging.warn(u"Make Response Error: {0!r}".format(err))
+                self.add_request(request, readback)
+                return
             args = readback(resp)
             s.setblocking(False)
             if args and len(args) == 3:
