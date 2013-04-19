@@ -86,6 +86,7 @@ class Command(object):
     def read_cetr(self, resp, callback, web):
         """ 读取英汉翻译的结果 """
         source = resp.read()
+        body = None
         try:
             buf = StringIO(source)
             with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
@@ -125,6 +126,8 @@ class Command(object):
                             body += u"\t{0}\n".format(w.get("key"))
                             vs = u"\n\t\t".join(w.get("value"))
                             body += u"\t\t{0}\n".format(vs)
+        if not body:
+            body = u"没有结果"
 
         callback(body)
 

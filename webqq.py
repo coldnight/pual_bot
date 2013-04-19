@@ -403,8 +403,8 @@ class WebQQ(object):
 
     def handle_msg(self, resp, next_req):
         """ 处理消息 """
-        logging.info("Poll done")
         msg = json.loads(resp.read())
+        logging.info("Got message {0!r}".format(msg))
         self.msg_dispatch.dispatch(msg)
 
         return next_req, partial(self.handle_msg, next_req = next_req)
