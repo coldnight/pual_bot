@@ -126,6 +126,10 @@ class Command(object):
                             body += u"\t{0}\n".format(w.get("key"))
                             vs = u"\n\t\t".join(w.get("value"))
                             body += u"\t\t{0}\n".format(vs)
+
+            if errorCode == 50:
+                body = u"无效的有道key"
+
         if not body:
             body = u"没有结果"
 
