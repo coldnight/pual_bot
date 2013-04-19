@@ -228,7 +228,12 @@ class HTTPStream(object):
         return self.http_sock.make_get_url(url, params)
 
     def add_request(self, request, readback = None):
-        sock, data = self.http_sock.make_http_sock_data(request)
+        try:
+            sock, data = self.http_sock.make_http_sock_data(request)
+        except socket.error:
+            self.add_request(request, readback)
+            return
+
         fd = sock.fileno()
         self.fd_map[fd] = sock
         self.fd_request_map[fd] = request
