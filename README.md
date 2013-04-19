@@ -1,9 +1,13 @@
 # pual_bot 一个弱智的QQ机器人
-pual_bot是建立在[pyxmpp2](https://github.com/Jajcus/pyxmpp2)一套事件循环机制上的QQ机器人, 使用多路复用I/O模型,是一个高效的支持并发的WebQQ机器人, 其主要功能有 执行Python代码, 贴代码, 英汉互译
+pual_bot是一套建立在`Tornado`上的高效的支持并发的WebQQ机器人, 其主要功能有 执行Python代码, 贴代码, 英汉互译
 
 # 安装配置
-将`config.py.example`移动到`webqq`目录下并重命名为 `config.py`, 填入QQ号码和密码配置, 执行main.py脚本. 程序不依赖第三方库, Linux+ Python2.7.2 开发, 其他平台未测试不确保正确运行
+程序依赖tornado, 可使用 easy_install 安装
+```bash
+easy_install tornado
+```
+
+将`config.py.example`重命名为 `config.py`, 填入QQ号码和密码配置, 执行webqq.py脚本. 
 
 # 更新
-* `config.py`放到webqq/ 目录下
-* 翻译需要自己申请key, 申请连接在 `config.py.example`
+* 放弃原先的 pyxmpp2 mainloop 改为tornado

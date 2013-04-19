@@ -7,9 +7,9 @@
 #   Desc    :   消息调度
 #
 from functools import partial
-from utils import get_logger
 
-from utilhandlers import RunPyCodeHandler, PasteCodeHandler, CETranHandler
+from command import Command
+
 
 code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
@@ -25,36 +25,12 @@ ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
 class MessageDispatch(object):
     """ 消息调度器 """
     def __init__(self, webqq):
-        self.logger = get_logger()
         self.webqq = webqq
-        self.uin_qid_map = {}          # uin 到QQ号的映射
-        self.qid_uin_map = {}          # QQ号到uin的映射
-        self._maped = False
-
-    def get_map(self):
-        uins = [key for key, value in self.webqq.group_map.items()]
-        for uin in uins:
-            qid = self.get_qid_with_uin(uin)
-            self.uin_qid_map[uin] = qid
-            self.qid_uin_map[qid] = uin
-        self._maped = True
+        self.cmd = Command()
 
 
-    def get_uin_account(self, xmpp):
-        """ 根据xmpp帐号获取桥接的qq号的uin """
-        qids = []
-        for qid, x in self.bridges:
-            if x == xmpp:
-                qids.append(self.qid_uin_map.get(qid))
-
-        return qids
-
-    def get_qid_with_uin(self, uin):
-        qid = self.uin_qid_map.get(uin)
-        if not qid:
-            qid = self.webqq.get_qid_with_uin(uin)
-            self.uin_qid_map[uin] = qid
-        return qid
+    def send_msg(self, content, callback, nick = None):
+        self.cmd.send_msg(content, callback, nick)
 
     def handle_qq_msg_contents(self, contents):
         content = ""
@@ -99,19 +75,16 @@ class MessageDispatch(object):
             `callback`  -       仅仅接受内容参数的回调
             `pre`       -       处理后内容前缀
         """
+        callback = partial(self.send_msg, callback = callback, nick = pre)
         if content.startswith("-py"):
             body = content.lstrip("-py").strip()
-            handler = RunPyCodeHandler(self.webqq, code = body,
-                                        callback = callback, pre = pre)
-            self.webqq.mainloop.add_handler(handler)
+            self.cmd.py(body, callback)
 
         if content.startswith("```"):
             typ = content.split("\n")[0].lstrip("`").strip().lower()
             if typ not in code_typs: typ = "text"
             code = "\n".join(content.split("\n")[1:])
-            handler = PasteCodeHandler(self.webqq, code=code, typ=typ,
-                                       callback=callback, pre=pre)
-            self.webqq.mainloop.add_handler(handler)
+            self.cmd.paste(code, callback, typ)
 
         if content.strip() == "ping " + self.webqq.nickname:
             if pre:
@@ -132,10 +105,7 @@ class MessageDispatch(object):
                 web = False
                 st = "-tr"
             body = content.lstrip(st).strip()
-            handler = CETranHandler(self.webqq, source = body, web = web,
-                                    callback = callback, pre = pre)
-            self.webqq.mainloop.add_handler(handler)
-
+            self.cmd.cetr(body, callback, web)
 
 
     def dispatch(self, qq_source):
