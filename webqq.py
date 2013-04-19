@@ -99,6 +99,10 @@ class WebQQ(object):
             self.nickname = nickname
 
 
+    def get_group_member_nick(self, gcode, uin):
+        return self.group_members_info.get(gcode, {}).get(uin, {}).get("nick")
+
+
     def check(self):
         """ 检查是否需要验证码
         url :
@@ -343,17 +347,17 @@ class WebQQ(object):
         """ 获取群成员数据 """
         data = json.loads(resp.read())
         members = data.get("result", {}).get("minfo", [])
-        self.group_info[gcode] = {}
+        self.group_members_info[gcode] = {}
         for m in members:
             uin = m.get("uin")
-            self.group_info[gcode][uin] = m
+            self.group_members_info[gcode][uin] = m
 
         cards = data.get("result", {}).get("cards", [])
 
         for card in cards:
             uin = card.get("muin")
             group_name = card.get("card")
-            self.group_info[gcode][uin]["nick"] = group_name
+            self.group_members_info[gcode][uin]["nick"] = group_name
 
         if last and not self.poll_and_heart:
             logging.info("fetch group's members done")

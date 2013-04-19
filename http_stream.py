@@ -257,7 +257,11 @@ class HTTPStream(object):
         s = self.fd_map[fd]
 
         if event & IOLoop.READ:
-            resp = self.http_sock.make_response(s, request)
+            try:
+                resp = self.http_sock.make_response(s, request)
+            except httplib.BadStatusLine:
+                import sys
+                sys.exit(1)
             args = readback(resp)
             if args and len(args) == 3:
                 t = threading.Thread(target = self.add_delay_request, args = args)
