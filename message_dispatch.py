@@ -106,7 +106,7 @@ class MessageDispatch(object):
             self.cmd.cetr(body, callback, web)
 
         if len(content) > MAX_RECEIVER_LENGTH:
-            self.cmd.paste(code, callback)
+            self.cmd.paste(content, callback)
 
 
     def dispatch(self, qq_source):
