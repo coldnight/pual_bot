@@ -76,24 +76,24 @@ class MessageDispatch(object):
             `callback`  -       仅仅接受内容参数的回调
             `pre`       -       处理后内容前缀
         """
-        callback = partial(self.send_msg, callback = callback, nick = pre)
+        send_msg = partial(self.send_msg, callback = callback, nick = pre)
         if content.startswith("-py"):
             body = content.lstrip("-py").strip()
-            self.cmd.py(body, callback)
+            self.cmd.py(body, send_msg)
 
         if content.startswith("```"):
             typ = content.split("\n")[0].lstrip("`").strip().lower()
             if typ not in code_typs: typ = "text"
             code = "\n".join(content.split("\n")[1:])
-            self.cmd.paste(code, callback, typ)
+            self.cmd.paste(code, send_msg, typ)
 
         if content.strip() == "ping " + self.webqq.nickname:
             body = u"I am here ^ ^"
-            callback(body)
+            send_msg(body)
 
         if content.strip() == "about " + self.webqq.nickname:
             body = ABOUT_STR
-            callback(body)
+            send_msg(body)
 
         if content.startswith("-tr"):
             if content.startswith("-trw"):
@@ -103,10 +103,15 @@ class MessageDispatch(object):
                 web = False
                 st = "-tr"
             body = content.lstrip(st).strip()
-            self.cmd.cetr(body, callback, web)
+            self.cmd.cetr(body, send_msg, web)
 
         if len(content) > MAX_RECEIVER_LENGTH:
-            self.cmd.paste(content, callback)
+            if pre:
+                cpre = u"{0}内容过长: ".format(pre)
+            else:
+                cpre = pre
+            send_pre_msg = partial(self.send_msg, callback = callback, nick = cpre)
+            self.cmd.paste(content, send_pre_msg)
 
 
     def dispatch(self, qq_source):
