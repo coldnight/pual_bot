@@ -275,7 +275,7 @@ class HTTPStream(object):
             try:
                 resp = self.http_sock.make_response(s, request)
             except Exception, err:
-                logging.warn(u"Make response error {1!r}".format(err))
+                logging.warn(u"Make response error {0!r}".format(err))
                 logging.info(u"Retry")
                 self.add_request(request, readback)
                 return
