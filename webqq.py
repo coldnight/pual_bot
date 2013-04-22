@@ -6,12 +6,12 @@
 #   Date    :   13/04/19 09:49:56
 #   Desc    :   WebQQ
 #
+import os
 import time
 import json
 import random
 import logging
 import urllib2
-import tempfile
 
 from hashlib import md5
 from functools import partial
@@ -80,14 +80,15 @@ class WebQQ(object):
         cookie = urllib2.HTTPCookieProcessor(self.http_stream.cookiejar)
         opener = urllib2.build_opener(cookie)
         res = opener.open(request)
-        path = tempfile.mktemp()
+        path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                            "check.jpg")
         fp = open(path, 'wb')
         fp.write(res.read())
         fp.close()
-        print u"打开验证图片, 并输入验证码: {0}".format(path)
+        print u"验证图片: {0}".format(path)
         check_code = ""
         while not check_code:
-            check_code = raw_input("打开上面连接输出图片上的验证码: ")
+            check_code = raw_input("输入验证图片上的验证码: ")
         return check_code.strip().upper()
 
 

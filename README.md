@@ -11,3 +11,4 @@ easy_install tornado
 
 # 更新
 * 放弃原先的 pyxmpp2 mainloop 改为tornado
+* 不在将验证图片放到网站上, 而是作为临时文件保存, 请使用图片查看器查看, 然后输入验证码
