@@ -29,7 +29,6 @@ class MessageDispatch(object):
         self.webqq = webqq
         self.cmd = Command()
 
-
     def send_msg(self, content, callback, nick = None):
         self.cmd.send_msg(content, callback, nick)
 
@@ -93,6 +92,10 @@ class MessageDispatch(object):
 
         if content.strip() == "about " + self.webqq.nickname:
             body = ABOUT_STR
+            send_msg(body)
+
+        if content.strip() == "uptime " + self.webqq.nickname:
+            body = self.webqq.get_uptime()
             send_msg(body)
 
         if content.startswith("-tr"):

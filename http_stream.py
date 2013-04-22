@@ -26,7 +26,10 @@ import itertools
 from functools import partial
 from tornado.ioloop import IOLoop
 
-logging.basicConfig(level = logging.DEBUG)
+"""
+logging.basicConfig(level = logging.DEBUG,
+                    format = "%(asctime)s [%(levelname)s] %(message)s")
+"""
 
 class Form(object):
     def __init__(self):
@@ -230,6 +233,11 @@ class HTTPStream(object):
         return self.http_sock.make_get_url(url, params)
 
     def add_request(self, request, readback = None):
+        if not isinstance(request, urllib2.Request):
+            raise ValueError, "Not a invaid requset"
+
+        logging.debug(u"Add reuqest {0} {1}".format(request.get_full_url(),
+                                                    request.get_method()))
         try:
             sock, data = self.http_sock.make_http_sock_data(request)
         except socket.error:
@@ -270,7 +278,7 @@ class HTTPStream(object):
                 import sys
                 sys.exit(1)
             except Exception, err:
-                logging.warn(u"Make Response Error: {0!r}".format(err))
+                logging.warn(u"Make response error: {1!r}".format(err))
                 self.add_request(request, readback)
                 return
             args = readback(resp)
@@ -296,6 +304,9 @@ class HTTPStream(object):
 
     def start(self):
         self.ioloop.start()
+
+    def stop(self):
+        self.ioloop.stop()
 
 if __name__ == "__main__":
     http_stream = HTTPStream.instance()

@@ -18,7 +18,9 @@ from functools import partial
 from http_stream import HTTPStream
 from message_dispatch import MessageDispatch
 
-logging.basicConfig(level = logging.DEBUG)
+logging.basicConfig(level = logging.DEBUG,
+                    format = "%(asctime)s [%(levelname)s] %(message)s")
+
 
 class WebQQ(object):
     def __init__(self, qid, pwd):
@@ -49,6 +51,8 @@ class WebQQ(object):
 
         self.hb_time = int(time.time() * 1000)
 
+        self.login_time = None       # 登录的时间
+
 
     def handle_pwd(self, password):
         """ 根据检查返回结果,调用回调生成密码和保存验证码 """
@@ -59,10 +63,10 @@ class WebQQ(object):
     def ptui_checkVC(self, r, vcode, uin):
         """ 处理检查的回调 返回三个值 """
         if int(r) == 0:
-            logging.info("Check Ok")
+            logging.info("Has checked, don't need verification code ")
             self.check_code = vcode
         else:
-            logging.warn("Check Error")
+            logging.warn("Has checked, need a verification code")
             self.check_code = self.get_check_img(vcode)
             self.require_check = True
         return r, self.check_code, uin
@@ -90,11 +94,11 @@ class WebQQ(object):
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
         """ 模拟JS登录之前的回调, 保存昵称 """
         if int(scode) == 0:
-            logging.info("Get ptwebqq Ok")
+            logging.info("Get the value of ptwebqq from cookie")
             self.skey = self.http_stream.cookie['.qq.com']['/']['skey'].value
             self.ptwebqq = self.http_stream.cookie['.qq.com']['/']['ptwebqq'].value
         else:
-            logging.warn("Get ptwebqq Error")
+            logging.warn("There is no value of ptwebqq in cookie")
         if nickname:
             self.nickname = nickname
 
@@ -102,6 +106,27 @@ class WebQQ(object):
     def get_group_member_nick(self, gcode, uin):
         return self.group_members_info.get(gcode, {}).get(uin, {}).get("nick")
 
+    def get_uptime(self):
+        MIN = 60
+        HOUR = 60 * MIN
+        DAY = 24 * HOUR
+
+        now = time.time()
+        sub = now - self.login_time
+
+        days = int(sub / DAY)
+        hours = int(sub / HOUR)
+        mins = int(sub / MIN)
+        if days:
+            return "up {0} days".format(days)
+
+        if hours:
+            return "up {0} hours".format(hours)
+
+        if mins:
+            return "up {0} min".format(mins)
+
+        return "up {0} sec".format(int(sub))
 
     def check(self):
         """ 检查是否需要验证码
@@ -118,7 +143,7 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
-        logging.info("Start check")
+        logging.info("Check whether need verification code ")
         url = "http://check.ptlogin2.qq.com/check"
         params = {"uin":self.qid, "appid":self.aid,
                   "r" : random.random()}
@@ -162,7 +187,7 @@ class WebQQ(object):
         先检查是否需要验证码,不需要验证码则首先执行一次登录
         然后获取Cookie里的ptwebqq,skey保存在实例里,供后面的接口调用
         """
-        logging.info("check done, login...")
+        logging.info("Check is done, start to login1")
         self.check_data = resp.read().strip().rstrip(";")
         password = self.handle_pwd(self.__pwd)
         url = "https://ssl.ptlogin2.qq.com/login"
@@ -215,7 +240,7 @@ class WebQQ(object):
                 u'vfwebqq': u'', u'port': 43332}}
             保存result中的psessionid和vfwebqq供后面接口调用
         """
-        logging.info("login done, login2...")
+        logging.info("login1 done, start to login2")
         blogin_data = resp.read().decode("utf-8").strip().rstrip(";")
         eval("self." + blogin_data)
 
@@ -249,8 +274,7 @@ class WebQQ(object):
 
         data = json.loads(resp.read())
         if login:
-            logging.info("login2 done")
-            logging.info("update friend")
+            logging.info("WebQQ is logged in, start to update friend info")
             self.psessionid = data.get("result", {}).get("psessionid")
             self.vfwebqq = data.get("result", {}).get("vfwebqq")
             url = "http://s.web2.qq.com/api/get_user_friends2"
@@ -264,7 +288,7 @@ class WebQQ(object):
             read_back = partial(self.update_friend, login = False)
             return request, read_back
         else:
-            logging.info("update friend done")
+            logging.info("Friend info update")
             lst = data.get("result", {}).get("info", [])
             for info in lst:
                 uin = info.get("uin")
@@ -298,7 +322,7 @@ class WebQQ(object):
                 }
 
         """
-        logging.info("fetch group list...")
+        logging.info("Fetch group list...")
         url = "http://s.web2.qq.com/api/get_group_name_list_mask2"
         params = [("r", '{"vfwebqq":"%s"}' % self.vfwebqq),]
         request = self.http_stream.make_post_request(url, params)
@@ -322,8 +346,8 @@ class WebQQ(object):
             "Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"
         """
-        logging.info("fetch group list done")
-        logging.info("fetch group's members")
+        logging.info("Fetch group list done")
+        logging.info("Fetch group's members")
         data = json.loads(resp.read())
         group_list = data.get("result", {}).get("gnamelist", [])
         for i, group in enumerate(group_list):
@@ -360,7 +384,7 @@ class WebQQ(object):
             self.group_members_info[gcode][uin]["nick"] = group_name
 
         if last and not self.poll_and_heart:
-            logging.info("fetch group's members done")
+            logging.info("Fetch group's members done")
             self.poll()
             self.heartbeat()
 
@@ -384,7 +408,7 @@ class WebQQ(object):
         头部:
             "Referer": "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2"
         """
-        logging.info("start poll")
+        logging.info("Everything is ready, start to poll message")
 
         if not self.poll_and_heart:
             self.poll_and_heart = True
@@ -430,7 +454,9 @@ class WebQQ(object):
                 t    // 开始的心跳时间(int(time.time()) * 1000)
             }
         """
-        logging.info("start heartbeat")
+        logging.info("Start heartbeat")
+        self.login_time = time.time()
+
         if not self.poll_and_heart:
             self.poll_and_heart = True
 
@@ -446,7 +472,7 @@ class WebQQ(object):
 
     def hb_next(self, resp, next_req):
         """ 持续心跳 """
-        logging.info("Heartbeat")
+        logging.info("Heartbeat is done, continue to wait for 60 seconds")
         return next_req, partial(self.hb_next, next_req = next_req), 60
 
 
@@ -481,7 +507,7 @@ class WebQQ(object):
         HEADERS:
             Referer:http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3
         """
-
+        logging.info(u"Send buddy message {0} to {1}".format(content, to_uin))
         content = self.make_msg_content(content)
 
         url = "http://d.web2.qq.com/channel/send_buddy_msg2"
@@ -517,6 +543,7 @@ class WebQQ(object):
                 psessionid
             }
         """
+        logging.info(u"Send group message {0} to {1}".format(content, group_uin))
         gid = self.group_info.get(group_uin).get("gid")
         content = self.make_msg_content(content)
 
