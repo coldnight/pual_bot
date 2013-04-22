@@ -119,15 +119,22 @@ class WebQQ(object):
         hours = int(sub / HOUR)
         mins = int(sub / MIN)
         if days:
-            return "up {0} days".format(days)
+            num = days
+            unit = "days" if days > 1 else "day"
 
         if hours:
-            return "up {0} hours".format(hours)
+            num = hours
+            unit = "hours" if hours > 1 else "hour"
 
         if mins:
-            return "up {0} min".format(mins)
+            num = mins
+            unit = "min"
 
-        return "up {0} sec".format(int(sub))
+        if not days and not mins and not hours:
+            num = int(sub)
+            unit = "sec"
+
+        return "up {0} {1}".format(num, unit)
 
     def check(self):
         """ 检查是否需要验证码
@@ -578,4 +585,5 @@ class WebQQ(object):
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
     webqq = WebQQ(QQ, QQ_PWD)
-    webqq.run()
+    while True:
+        webqq.run()

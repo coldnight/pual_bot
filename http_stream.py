@@ -274,10 +274,14 @@ class HTTPStream(object):
         if event & IOLoop.READ:
             try:
                 resp = self.http_sock.make_response(s, request)
+            except httplib.BadStatusLine, err:
+                logging.error("Error with BadStatusLine, restart")
+                self.stop()
+                return
             except Exception, err:
                 logging.warn(u"Make response error {0!r}".format(err))
-                logging.info(u"Retry")
-                self.add_request(request, readback)
+                logging.info(u"Restart")
+                self.stop()
                 return
             args = readback(resp)
             s.setblocking(False)
