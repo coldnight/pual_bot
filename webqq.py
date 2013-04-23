@@ -118,17 +118,18 @@ class WebQQ(object):
         days = int(sub / DAY)
         hours = int(sub / HOUR)
         mins = int(sub / MIN)
-        if days:
-            num = days
-            unit = "days" if days > 1 else "day"
+
+        if mins:
+            num = mins
+            unit = "min"
 
         if hours:
             num = hours
             unit = "hours" if hours > 1 else "hour"
 
-        if mins:
-            num = mins
-            unit = "min"
+        if days:
+            num = days
+            unit = "days" if days > 1 else "day"
 
         if not days and not mins and not hours:
             num = int(sub)
