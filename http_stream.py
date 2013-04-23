@@ -241,7 +241,7 @@ class HTTPStream(object):
         try:
             sock, data = self.http_sock.make_http_sock_data(request)
         except socket.error:
-            self.add_request(request, readback)
+            self.stop()
             return
 
         fd = sock.fileno()
@@ -274,13 +274,10 @@ class HTTPStream(object):
         if event & IOLoop.READ:
             try:
                 resp = self.http_sock.make_response(s, request)
-            except httplib.BadStatusLine, err:
-                logging.error("Error with BadStatusLine, restart")
-                self.stop()
-                return
             except Exception, err:
                 logging.error(u"Make response error {0!r}".format(err))
                 logging.info(u"Restart")
+                self.ioloop.remove_handler(fd)
                 self.stop()
                 return
             args = readback(resp)
