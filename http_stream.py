@@ -279,7 +279,7 @@ class HTTPStream(object):
                 self.stop()
                 return
             except Exception, err:
-                logging.warn(u"Make response error {0!r}".format(err))
+                logging.error(u"Make response error {0!r}".format(err))
                 logging.info(u"Restart")
                 self.stop()
                 return
