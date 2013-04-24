@@ -585,6 +585,6 @@ class WebQQ(object):
 
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
-    webqq = WebQQ(QQ, QQ_PWD)
     while True:
+        webqq = WebQQ(QQ, QQ_PWD)
         webqq.run()
