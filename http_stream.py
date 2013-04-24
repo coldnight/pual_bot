@@ -240,7 +240,8 @@ class HTTPStream(object):
                                                     request.get_method()))
         try:
             sock, data = self.http_sock.make_http_sock_data(request)
-        except socket.error:
+        except socket.error, err:
+            logging.error("Make socket from request Error {0!r}".format(err))
             self.stop()
             return
 
@@ -248,6 +249,7 @@ class HTTPStream(object):
         self.fd_map[fd] = sock
         self.fd_request_map[fd] = request
         callback = partial(self._handle_events, request, data, readback)
+        logging.debug("Add request handler to IOLoop")
         self.ioloop.add_handler(fd, callback, IOLoop.WRITE)
 
 
@@ -272,6 +274,8 @@ class HTTPStream(object):
         s = self.fd_map[fd]
 
         if event & IOLoop.READ:
+            logging.debug(u"Reuqest {0} {1} READABLE".format(
+                request.get_full_url(), request.get_method()))
             try:
                 resp = self.http_sock.make_response(s, request)
             except Exception, err:
@@ -292,6 +296,8 @@ class HTTPStream(object):
             self.ioloop.remove_handler(fd)
 
         if event & IOLoop.WRITE:
+            logging.debug(u"Reuqest {0} {1} WRITABLE".format(
+                request.get_full_url(), request.get_method()))
             s.sendall(data)
             if readback:
                 self.ioloop.update_handler(fd, IOLoop.READ)
@@ -299,6 +305,8 @@ class HTTPStream(object):
                 self.ioloop.remove_handler(fd)
 
         if event & IOLoop.ERROR:
+            logging.debug(u"Reuqest {0} {1} ERROR".format(
+                request.get_full_url(), request.get_method()))
             pass
 
     def start(self):
