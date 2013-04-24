@@ -585,6 +585,8 @@ class WebQQ(object):
 
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
-    while True:
+    times = 0
+    while times < 10:
         webqq = WebQQ(QQ, QQ_PWD)
         webqq.run()
+        times += 1
