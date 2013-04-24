@@ -15,6 +15,7 @@ import urllib2
 
 from hashlib import md5
 from functools import partial
+from datetime import datetime
 from http_stream import HTTPStream
 from message_dispatch import MessageDispatch
 
@@ -111,6 +112,7 @@ class WebQQ(object):
         MIN = 60
         HOUR = 60 * MIN
         DAY = 24 * HOUR
+        up_time = datetime.fromtimestamp(self.login_time).strftime("%H:%M:%S")
 
         now = time.time()
         sub = now - self.login_time
@@ -135,7 +137,7 @@ class WebQQ(object):
             num = int(sub)
             unit = "sec"
 
-        return "up {0} {1}".format(num, unit)
+        return "{0} up {1} {2}".format(up_time, num, unit)
 
     def check(self):
         """ 检查是否需要验证码
