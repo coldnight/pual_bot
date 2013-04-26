@@ -88,6 +88,7 @@ class HTTPSock(object):
     def __init__(self):
         cookiefile = tempfile.mktemp()
         self.cookiejar = cookielib.MozillaCookieJar(cookiefile)
+        self.host_map = {}
 
     def make_get_url(self, url, params):
         return "{0}?{1}".format(url, urllib.urlencode(params))
@@ -129,6 +130,19 @@ class HTTPSock(object):
         return resp
 
 
+    def get_host(self, host):
+        """ 根据域名获取ip """
+        if self.host_map.has_key(host):
+            return self.host_map[host]
+
+        ip = socket.gethostbyname(host)
+        if ip:
+            self.host_map[host] = ip
+            return ip
+
+        return host
+
+
     def make_http_sock_data(self, request):
         """ 根据urllib2.Request 构建socket和用于发送的HTTP源数据 """
         url = request.get_full_url()
@@ -143,6 +157,7 @@ class HTTPSock(object):
             return getattr(self, "do_"+typ)(host, port), data
 
     def do_http(self, host, port):
+        host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(10)
         sock.connect((host, int(port)))
@@ -150,6 +165,7 @@ class HTTPSock(object):
         return sock
 
     def do_https(self, host, port, keyfile = None, certfile = None):
+        host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(10)
         sock.connect((host, int(port)))
