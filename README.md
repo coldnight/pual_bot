@@ -17,7 +17,5 @@ easy_install tornado
 * 解决 在线时间稍长, 当经过多次请求后会触发`socket.gaierror(-2, 'Name or service not known')` 异常
 
 # 存在问题
-2. 在线时间过长会引发`httplib.BadStatusline`
-3. 没有重试机制
-
+1. 没有重试机制
 
