@@ -114,6 +114,19 @@ class MessageDispatch(object):
             self.cmd.cetr(body, send_msg, web)
             return
 
+        if u"提问的智慧" in content:
+            bodys = []
+            bodys.append(u"提问的智慧:")
+            bodys.append(u"原文: http://www.catb.org/~esr/faqs/smart-questions.html")
+            bodys.append(u"译文: http://www.wapm.cn/smart-questions/smart-questions-zh.html")
+            bodys.append(u"简化版: http://wiki.woodpecker.org.cn/moin/AskForHelp")
+            bodys.append(u"概括:")
+            bodys.append(u"1. 详细描述问题, 最好辅以代码(代码最好能贴到某个地方, Pual支持这个, 只需要发送```codetype[换行]yourcode")
+            bodys.append(u"2. 不大吵大叫, 不使用过大和鲜艳的字体")
+            bodys.append(u"3. 向帮你解决问题的人说谢谢 ")
+            callback("\n".join(bodys))
+
+
         if len(content) > MAX_RECEIVER_LENGTH:
             if pre:
                 cpre = u"{0}内容过长: ".format(pre)
