@@ -13,7 +13,11 @@ easy_install tornado
 * 放弃原先的 pyxmpp2 mainloop 改为tornado
 * 不在将验证图片放到网站上, 而是作为临时文件保存, 请使用图片查看器查看, 然后输入验证码
 
+# 2013-04-26 更新
+* 解决 在线时间稍长, 当经过多次请求后会触发`socket.gaierror(-2, 'Name or service not known')` 异常
+
 # 存在问题
-1. 在线时间稍长, 当经过多次请求后会触发`socket.gaierror(-2, 'Name or service not known')` 异常
 2. 在线时间过长会引发`httplib.BadStatusline`
 3. 没有重试机制
+
+
