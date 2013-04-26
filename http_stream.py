@@ -298,6 +298,8 @@ class HTTPStream(object):
                 logging.error(u"Make response error {0!r}".format(err))
                 logging.info(u"Restart")
                 self.ioloop.remove_handler(fd)
+                s.close()
+                del self.fd_map[fd]
                 self.stop()
                 return
             args = readback(resp)
@@ -309,6 +311,8 @@ class HTTPStream(object):
 
             if args and len(args) == 2:
                 self.add_request(*args)
+            s.close()
+            del self.fd_map[fd]
             self.ioloop.remove_handler(fd)
 
         if event & IOLoop.WRITE:
@@ -319,6 +323,8 @@ class HTTPStream(object):
                 self.ioloop.update_handler(fd, IOLoop.READ)
             else:
                 self.ioloop.remove_handler(fd)
+                s.close()
+                del self.fd_map[fd]
 
         if event & IOLoop.ERROR:
             logging.debug(u"Reuqest {0} {1} ERROR".format(
