@@ -79,24 +79,29 @@ class MessageDispatch(object):
         if content.startswith("-py"):
             body = content.lstrip("-py").strip()
             self.cmd.py(body, send_msg)
+            return
 
         if content.startswith("```"):
             typ = content.split("\n")[0].lstrip("`").strip().lower()
             if typ not in code_typs: typ = "text"
             code = "\n".join(content.split("\n")[1:])
             self.cmd.paste(code, send_msg, typ)
+            return
 
         if content.strip() == "ping " + self.webqq.nickname:
             body = u"I am here ^ ^"
             send_msg(body)
+            return
 
         if content.strip() == "about " + self.webqq.nickname:
             body = ABOUT_STR
             send_msg(body)
+            return
 
         if content.strip() == "uptime " + self.webqq.nickname:
             body = self.webqq.get_uptime()
             send_msg(body)
+            return
 
         if content.startswith("-tr"):
             if content.startswith("-trw"):
@@ -107,6 +112,7 @@ class MessageDispatch(object):
                 st = "-tr"
             body = content.lstrip(st).strip()
             self.cmd.cetr(body, send_msg, web)
+            return
 
         if len(content) > MAX_RECEIVER_LENGTH:
             if pre:
