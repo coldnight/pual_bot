@@ -20,8 +20,8 @@ code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
 
 ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
-        u"HomePage  :   http://www.linuxzen.com\n"\
-        u"Project@  :   https://github.com/coldnight/pual_bot"
+        u"HomePage  :   http://t.cn/zTocACq\n"\
+        u"Project@  :   http://git.io/hWy9nQ"
 
 class MessageDispatch(object):
     """ 消息调度器 """
@@ -117,12 +117,12 @@ class MessageDispatch(object):
         if u"提问的智慧" in content:
             bodys = []
             bodys.append(u"提问的智慧:")
-            bodys.append(u"原文: http://www.catb.org/~esr/faqs/smart-questions.html")
-            bodys.append(u"译文: http://www.wapm.cn/smart-questions/smart-questions-zh.html")
-            bodys.append(u"简化版: http://wiki.woodpecker.org.cn/moin/AskForHelp")
+            bodys.append(u"原文: http://t.cn/hthAh")
+            bodys.append(u"译文: http://t.cn/SUHbCJ")
+            bodys.append(u"简化版: http://t.cn/hI2oe")
             bodys.append(u"概括:")
-            bodys.append(u"1. 详细描述问题, 最好辅以代码(代码最好能贴到某个地方, Pual支持这个, 只需要发送```codetype[换行]yourcode")
-            bodys.append(u"2. 不大吵大叫, 不使用过大和鲜艳的字体")
+            bodys.append(u"1. 详细描述问题: 目的, 代码, 错误信息等")
+            bodys.append(u"2. 代码不要直接发到QQ上, 以免被替换成表情或丢失缩进")
             bodys.append(u"3. 向帮你解决问题的人说谢谢 ")
             callback("\n".join(bodys))
 
@@ -144,3 +144,5 @@ class MessageDispatch(object):
                     self.handle_qq_group_msg(m)
                 if m.get("poll_type") == "message":
                     self.handle_qq_message(m)
+                if m.get("poll_type") == "kick_message":
+                    self.webqq.stop()
