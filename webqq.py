@@ -53,6 +53,9 @@ class WebQQ(object):
         self.hb_time = int(time.time() * 1000)
 
         self.login_time = None       # 登录的时间
+        self.last_group_msg_time = time.time()
+        self.last_msg_content = None
+        self.last_msg_numbers = 0    # 剩余位发送的消息数量
 
 
     def handle_pwd(self, password):
@@ -567,8 +570,21 @@ class WebQQ(object):
         self.msg_id += 1
 
         request = self.http_stream.make_post_request(url, params)
-        request.add_header("Referer",  "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3")
-        self.http_stream.add_request(request)
+        request.add_header("Referer",  "http://d.web2.qq.com/proxy.html"
+                           "?v=20110331002&callback=1&id=3")
+        if time.time() - self.last_group_msg_time < 0.5 or\
+           self.last_msg_numbers > 0:
+            self.last_msg_numbers += 1
+            delay = self.last_msg_numbers * 0.5
+            self.http_stream.add_delay_request(request, self.send_group_msg_back,
+                                               delay)
+        else:
+            self.http_stream.add_request(request)
+
+    def send_group_msg_back(self, resp):
+        self.last_group_msg_time = time.time()
+        if self.last_msg_numbers > 0:
+            self.last_msg_numbers -= 1
 
 
     def run(self):
