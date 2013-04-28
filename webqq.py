@@ -562,7 +562,7 @@ class WebQQ(object):
         r = {"group_uin": gid, "content": content,
             "msg_id": self.msg_id, "clientid": self.clientid,
             "psessionid": self.psessionid}
-        params = [("r", json.dumps(r)), ("sessionid", self.psessionid),
+        params = [("r", json.dumps(r)), ("psessionid", self.psessionid),
                 ("clientid", self.clientid)]
         self.msg_id += 1
 
