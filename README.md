@@ -16,6 +16,9 @@ easy_install tornado
 # 2013-04-26 更新
 * 解决 在线时间稍长, 当经过多次请求后会触发`socket.gaierror(-2, 'Name or service not known')` 异常
 
+# 2013-04-28 更新
+* 发送群消息频率过快导致的消息丢失
+
 # 存在问题
 1. 没有重试机制
 
