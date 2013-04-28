@@ -137,7 +137,7 @@ class HTTPSock(object):
 
         ip = socket.gethostbyname(host)
         if ip:
-            self.host_map[host] = ip
+            #self.host_map[host] = ip
             return ip
 
         return host
