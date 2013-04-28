@@ -571,14 +571,15 @@ class WebQQ(object):
         request = self.http_stream.make_post_request(url, params)
         request.add_header("Referer",  "http://d.web2.qq.com/proxy.html"
                            "?v=20110331002&callback=1&id=3")
+        callback = partial(self.send_group_msg_back, content, group_uin)
         if time.time() - self.last_group_msg_time < 0.5 or\
            self.last_msg_numbers > 0:
             self.last_msg_numbers += 1
             delay = self.last_msg_numbers * 0.5
-            callback = partial(self.send_group_msg_back, content, group_uin)
             self.http_stream.add_delay_request(request, callback, delay)
         else:
-            self.http_stream.add_request(request)
+            self.last_msg_number += 1
+            self.http_stream.add_request(request, callback)
 
     def send_group_msg_back(self, content, group_uin, resp):
         logging.info(u"Send group message {0} to {1}".format(content, group_uin))
