@@ -557,7 +557,6 @@ class WebQQ(object):
                 psessionid
             }
         """
-        logging.info(u"Send group message {0} to {1}".format(content, group_uin))
         gid = self.group_info.get(group_uin).get("gid")
         content = self.make_msg_content(content)
 
@@ -576,12 +575,13 @@ class WebQQ(object):
            self.last_msg_numbers > 0:
             self.last_msg_numbers += 1
             delay = self.last_msg_numbers * 0.5
-            self.http_stream.add_delay_request(request, self.send_group_msg_back,
-                                               delay)
+            callback = partial(self.send_group_msg_back, content, group_uin)
+            self.http_stream.add_delay_request(request, callback, delay)
         else:
             self.http_stream.add_request(request)
 
-    def send_group_msg_back(self, resp):
+    def send_group_msg_back(self, content, group_uin, resp):
+        logging.info(u"Send group message {0} to {1}".format(content, group_uin))
         self.last_group_msg_time = time.time()
         if self.last_msg_numbers > 0:
             self.last_msg_numbers -= 1
