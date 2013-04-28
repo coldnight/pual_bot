@@ -270,6 +270,12 @@ class HTTPStream(object):
 
 
     def add_delay_request(self, request, readback, delay = 60):
+        t = threading.Thread(target = self._add_delay_request,
+                             args = (request, readback, delay))
+        t.setDaemon(True)
+        t.start()
+
+    def _add_delay_request(self, request, readback, delay = 60):
         if isinstance(threading.currentThread(), threading._MainThread):
             raise threading.ThreadError, "Can't run this function in _MainThread"
 
@@ -305,9 +311,7 @@ class HTTPStream(object):
             args = readback(resp)
             s.setblocking(False)
             if args and len(args) == 3:
-                t = threading.Thread(target = self.add_delay_request, args = args)
-                t.setDaemon(True)
-                t.start()
+                self.add_delay_request(*args)
 
             if args and len(args) == 2:
                 self.add_request(*args)
