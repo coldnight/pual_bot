@@ -140,4 +140,5 @@ class Command(object):
             body = nick + msg if nick else msg
             callback(body)
         else:
+            callback = partial(self.send_msg, callback = callback, nick = nick)
             self.paste(msg, callback)
