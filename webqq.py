@@ -567,7 +567,7 @@ class WebQQ(object):
         self.msg_id += 1
 
         request = self.http_stream.make_post_request(url, params)
-        request.add_header("Referer",  "http://d.web2.qq.com/proxy.html")
+        request.add_header("Referer",  "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3")
         self.http_stream.add_request(request)
 
 
