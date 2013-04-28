@@ -578,7 +578,7 @@ class WebQQ(object):
             delay = self.last_msg_numbers * 0.5
             self.http_stream.add_delay_request(request, callback, delay)
         else:
-            self.last_msg_number += 1
+            self.last_msg_numbers += 1
             self.http_stream.add_request(request, callback)
 
     def send_group_msg_back(self, content, group_uin, resp):
