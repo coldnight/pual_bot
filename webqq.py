@@ -241,7 +241,7 @@ class WebQQ(object):
                 psessionid  // 传递null
             }
         其他:
-            续加上 Referer和 Origin 头:
+            需加上 Referer和 Origin 头:
             "Referer": "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"
             "Origin": "http://d.web2.qq.com"
 
@@ -604,9 +604,16 @@ class WebQQ(object):
 
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
-    times = 0
-    while True:
-        webqq = WebQQ(QQ, QQ_PWD)
-        webqq.run()
-        time.sleep(times * 10)
-        times += 1
+
+    def main():
+        pid = os.fork()
+        if pid > 0:
+            print "Main process wait main exit with pid", pid
+            os.waitpid(pid, 0)
+            main()
+        else:
+            print "Child process run webqq with pid", pid
+            webqq = WebQQ(QQ, QQ_PWD)
+            webqq.run()
+
+    main()
