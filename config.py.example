@@ -19,3 +19,6 @@ MAX_LENGTH = 150
 
 # 机器人接收内容超过这个长度将贴到网上
 MAX_RECEIVER_LENGTH = 300
+
+# 是否上传验证图片, False则存在本地
+UPLOAD_CHECKIMG = False

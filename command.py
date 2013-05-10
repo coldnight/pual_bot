@@ -8,11 +8,27 @@
 #
 import gzip
 import json
+import urllib2
 from functools import partial
 from cStringIO import StringIO
 
-from http_stream import HTTPStream
+from http_stream import HTTPStream, Form
 from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH
+
+
+def upload_file(filename, path):
+    """ 上传文件
+    - `path`      文件路径
+    """
+    form = Form()
+    filename = filename.encode("utf-8")
+    form.add_file(fieldname='uploadfile', filename=filename,
+                    fileHandle=open(path))
+    req = urllib2.Request("http://paste.linuxzen.com")
+    req.add_header("Content-Type", form.get_content_type())
+    req.add_header("Content-Length", len(str(form)))
+    req.add_data(str(form))
+    return urllib2.urlopen(req)
 
 
 class Command(object):

@@ -16,8 +16,11 @@ import urllib2
 from hashlib import md5
 from functools import partial
 from datetime import datetime
+
 from http_stream import HTTPStream
 from message_dispatch import MessageDispatch
+from command import upload_file
+from config import UPLOAD_CHECKIMG
 
 logging.basicConfig(level = logging.DEBUG,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
@@ -89,6 +92,9 @@ class WebQQ(object):
         fp = open(path, 'wb')
         fp.write(res.read())
         fp.close()
+        if UPLOAD_CHECKIMG:
+            res = upload_file("check.jpg", path)
+            path = res.url
         print u"验证图片: {0}".format(path)
         check_code = ""
         while not check_code:
