@@ -579,7 +579,8 @@ class WebQQ(object):
             delay = self.last_msg_numbers * 0.5
 
         if self.last_msg_content == content:
-            delay += 1
+            delay += 0.5
+            self.last_msg_numbers += 1
 
         self.last_msg_numbers += 1
         self.last_msg_content = content
