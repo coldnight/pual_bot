@@ -613,7 +613,7 @@ if __name__ == "__main__":
     def main():
         pid = os.fork()
         if pid > 0:
-            print "Main process wait main exit with pid", pid
+            print "Main process wait child exit with pid", pid
             os.waitpid(pid, 0)
             main()
         else:
