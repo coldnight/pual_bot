@@ -6,6 +6,7 @@
 #   Date    :   13/04/19 13:57:17
 #   Desc    :   命令
 #
+import re
 import gzip
 import json
 import urllib2
@@ -52,12 +53,21 @@ class Command(object):
 
     def _url_info(self, resp, callback, url, isredirect = False):
         """ 读取url_info的回调 """
+        meta_charset = re.compile(br'<meta\s+http-equiv="?content-type"?'
+                                  '\s+content="?[^;]+;\s*charset=([^">]+'
+                                  ')"?\s*/?>|<meta\s+charset="?([^">/"]+'
+                                  ')"?\s*/?>', re.IGNORECASE)
         body = None
         content = resp.read()
         c_type =  resp.headers.get("Context-Type", "text/html")
         if resp.code in [200]:
             if c_type == "text/html":
-                parser = etree.HTML(content.lower().decode("utf-8"))
+                charset = meta_charset.findall(content)
+                if charset:
+                    ucont = content.lower().decode(charset[0][0]).encode("utf-8").decode("utf-8")
+                else:
+                    ucont = content.lower().decode("utf-8")
+                parser = etree.HTML(ucont)
                 title = parser.xpath(u"//title")
                 body = u"网页标题: "+title[0].text if len(title) >= 1 else None
                 if isredirect:
