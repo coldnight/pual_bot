@@ -6,6 +6,8 @@
 #   Date    :   13/03/01 11:44:05
 #   Desc    :   消息调度
 #
+import re
+import logging
 from functools import partial
 
 from command import Command
@@ -22,6 +24,11 @@ code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
 ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
         u"HomePage  :   http://t.cn/zTocACq\n"\
         u"Project@  :   http://git.io/hWy9nQ"
+
+
+URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
+                    "?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)",
+                    re.UNICODE)
 
 class MessageDispatch(object):
     """ 消息调度器 """
@@ -76,6 +83,13 @@ class MessageDispatch(object):
             `pre`       -       处理后内容前缀
         """
         send_msg = partial(self.send_msg, callback = callback, nick = pre)
+
+        urls = URL_RE.findall(content)
+        if urls:
+            logging.info(u"Get urls {0!r} from {1}".format(urls, content))
+            for url in urls:
+                self.cmd.url_info(url, send_msg)
+
         if content.startswith("-py"):
             body = content.lstrip("-py").strip()
             self.cmd.py(body, send_msg)
@@ -125,6 +139,7 @@ class MessageDispatch(object):
             bodys.append(u"2. 代码不要直接发到QQ上, 以免被替换成表情或丢失缩进")
             bodys.append(u"3. 向帮你解决问题的人说谢谢 ")
             callback("\n".join(bodys))
+
 
 
         if len(content) > MAX_RECEIVER_LENGTH:

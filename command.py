@@ -9,8 +9,10 @@
 import gzip
 import json
 import urllib2
+import httplib
 from functools import partial
 from cStringIO import StringIO
+from lxml import etree
 
 from http_stream import HTTPStream, Form
 from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH
@@ -33,6 +35,49 @@ def upload_file(filename, path):
 
 class Command(object):
     http_stream = HTTPStream.instance()
+
+    def url_info(self, url, callback, isredirect = False):
+        """ 获取url信息
+        Arguments:
+            `url`   -   链接
+            `callback`  -   发送消息的回调
+            `isredirect` -   是否是重定向
+        """
+        request = self.http_stream.make_get_request(url)
+        _url_info = partial(self._url_info, callback = callback, url = url,
+                            isredirect = isredirect)
+        _eurl_info = partial(self._eurl_info, callback = callback, url = url)
+        self.http_stream.add_request(request, _url_info, _eurl_info)
+
+
+    def _url_info(self, resp, callback, url, isredirect = False):
+        """ 读取url_info的回调 """
+        body = None
+        content = resp.read()
+        c_type =  resp.headers.get("Context-Type", "text/html")
+        if resp.code in [200]:
+            if c_type == "text/html":
+                parser = etree.HTML(content.lower().decode("utf-8"))
+                title = parser.xpath(u"//title")
+                body = u"网页标题: "+title[0].text if len(title) >= 1 else None
+                if isredirect:
+                    body += u"(重定向到:{0})".format(url)
+        elif resp.code in [302, 301]:
+            dst = resp.headers.get("Location")
+            self.url_info(dst, callback, True)
+        else:
+            body = u"({0} {1} {2})".format(url, resp.code,
+                                         httplib.responses[resp.code])
+
+        if body:
+            callback(body)
+
+
+    def _eurl_info(self, errcode, errmsg, url, callback):
+        """ 处理url_info错误 """
+        body = u"({0} {1})".format(url, errmsg)
+        callback(body)
+
 
     def py(self, code, callback):
         """ 执行Python代码

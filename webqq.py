@@ -12,6 +12,7 @@ import json
 import random
 import logging
 import urllib2
+import traceback
 
 from hashlib import md5
 from functools import partial
@@ -453,9 +454,10 @@ class WebQQ(object):
             if msg.get("retcode") == 121:
                 self.restart()
                 return
-            logging.info("Got message {0!r}".format(msg))
+            logging.info(u"Got message {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
+            traceback.print_exc()
             logging.error(u"Message can't loads: %s", data)
 
         return next_req, partial(self.handle_msg, next_req = next_req)

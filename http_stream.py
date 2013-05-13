@@ -159,7 +159,7 @@ class HTTPSock(object):
     def do_http(self, host, port):
         host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(10)
+        sock.settimeout(3)
         sock.connect((host, int(port)))
         sock.setblocking(0)
         return sock
@@ -167,7 +167,7 @@ class HTTPSock(object):
     def do_https(self, host, port, keyfile = None, certfile = None):
         host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(10)
+        sock.settimeout(3)
         sock.connect((host, int(port)))
         sock = ssl.wrap_socket(sock, keyfile, certfile)
         sock.setblocking(0)
@@ -185,7 +185,7 @@ class HTTPSock(object):
         headers.append(("Host", parse.netloc))
         headers.append(("Connection", "keep-alive"))
         headers.append(("Accept", "*/*"))
-        #headers.append(("Accept-Charset", "UTF-8,*;q=0.5"))
+        headers.append(("Accept-Charset", "UTF-8,*;q=0.5"))
         #headers.append(("Accept-Encoding", "gzip,deflate,sdch"))
         #headers.append(("Accept-Language", "zh-CN,zh;q=0.8"))
         headers.append(("User-Agent", "Mozilla/5.0 (X11; Linux x86_64)"\
@@ -248,7 +248,14 @@ class HTTPStream(object):
     def make_get_url(self, url, params):
         return self.http_sock.make_get_url(url, params)
 
-    def add_request(self, request, readback = None):
+    def add_request(self, request, readback = None, errorback = None):
+        """ 往流里添加请求
+        Arguments:
+            `request`   -   urllib2.Request
+            `readback`  -   读取相应的回调, 给这个回调传递一个Response
+            `errorback` -   发生错误时的回调, 给这个回调传递一个错误代码, 和错误信息
+                            错误代码 -1 超时
+        """
         if not isinstance(request, urllib2.Request):
             raise ValueError, "Not a invaid requset"
 
@@ -256,6 +263,10 @@ class HTTPStream(object):
                                                     request.get_method()))
         try:
             sock, data = self.http_sock.make_http_sock_data(request)
+        except socket.timeout, err:
+            if errorback:
+                errorback(errcode = -1, errmsg = "<Time Out>")
+            return
         except socket.error, err:
             logging.error("Make socket from request Error {0!r}".format(err))
             self.stop()
@@ -264,7 +275,7 @@ class HTTPStream(object):
         fd = sock.fileno()
         self.fd_map[fd] = sock
         self.fd_request_map[fd] = request
-        callback = partial(self._handle_events, request, data, readback)
+        callback = partial(self._handle_events, request, data, readback, errorback)
         logging.debug("Add request handler to IOLoop")
         self.ioloop.add_handler(fd, callback, IOLoop.WRITE)
 
@@ -283,12 +294,13 @@ class HTTPStream(object):
         self.add_request(request, readback)
 
 
-    def _handle_events(self, request, data, readback, fd, event):
+    def _handle_events(self, request, data, readback, errback, fd, event):
         """ 用于处理Tornado事件
         Arguments:
             `request`   -   urllib.Request
             `data`      -   socket要写入的数据
             `readback`  -   读取函数
+            `errback`   -   错误处理
             以上参数应当使用partial封装然后将此方法作为IOLoop.add_handler的callback
             `fd`        -   IOLoop传递 文件描述符
             `event`     -   IOLoop传递 tornado
@@ -300,6 +312,11 @@ class HTTPStream(object):
                 request.get_full_url(), request.get_method()))
             try:
                 resp = self.http_sock.make_response(s, request)
+            except httplib.BadStatusLine:
+                if errback:
+                    errback(errcode = -2, errmsg = "<Unknow error>")
+                self.ioloop.remove_handler(fd)
+                return
             except Exception, err:
                 logging.error(u"Make response error {0!r}".format(err))
                 logging.info(u"Restart")
