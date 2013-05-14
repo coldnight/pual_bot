@@ -65,7 +65,7 @@ class Command(object):
             if c_type == "text/html":
                 charset = meta_charset.findall(content)
                 logging.info("Found charset {0!r} in url {1}".format(charset, url))
-                if len(charset=1) and len(charset[0]) == 2:
+                if len(charset) == 1 and len(charset[0]) == 2:
                     charset = charset[0][0] if charset[0][0] else charset[0][1]
                 else:
                     charset = ""
