@@ -70,6 +70,9 @@ class Command(object):
                 else:
                     charset = ""
 
+                if charset == "gb2132":
+                    charset = "gbk"
+
                 if charset:
                     ucont = content.lower().decode(charset).encode("utf-8").decode("utf-8")
                 else:
