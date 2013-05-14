@@ -63,7 +63,7 @@ class Command(object):
         if resp.code in [200]:
             if c_type == "text/html":
                 charset = meta_charset.findall(content)
-                if charset:
+                if charset[0][0]:
                     ucont = content.lower().decode(charset[0][0]).encode("utf-8").decode("utf-8")
                 else:
                     ucont = content.lower().decode("utf-8")
