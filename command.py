@@ -74,8 +74,7 @@ class Command(object):
                     charset = "gbk"
 
                 if charset:
-                    ucont = content.lower().encode(charset).decode(charset).\
-                            encode("utf-8").decode("utf-8")
+                    ucont = content.lower().decode(charset).encode("utf-8").decode("utf-8")
                 else:
                     ucont = content.lower().decode("utf-8")
                 parser = etree.HTML(ucont)
