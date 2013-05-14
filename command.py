@@ -11,6 +11,7 @@ import gzip
 import json
 import urllib2
 import httplib
+import logging
 from functools import partial
 from cStringIO import StringIO
 from lxml import etree
@@ -63,8 +64,10 @@ class Command(object):
         if resp.code in [200]:
             if c_type == "text/html":
                 charset = meta_charset.findall(content)
-                if charset[0][0]:
-                    ucont = content.lower().decode(charset[0][0]).encode("utf-8").decode("utf-8")
+                logging.info("Found charset {0!r} in url {1}".format(charset, url))
+                charset = charset[0][0] if charset[0][0] else charset[0][1]
+                if charset:
+                    ucont = content.lower().decode(charset).encode("utf-8").decode("utf-8")
                 else:
                     ucont = content.lower().decode("utf-8")
                 parser = etree.HTML(ucont)
