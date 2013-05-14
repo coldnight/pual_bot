@@ -57,7 +57,7 @@ class Command(object):
                                   '\s+content="?[^;]+;\s*charset=([^">]+'
                                   ')"?\s*/?>|<meta\s+charset="?([^">/"]+'
                                   ')"?\s*/?>', re.IGNORECASE)
-        body = None
+        body = ""
         content = resp.read()
         c_type =  resp.headers.get("Context-Type", "text/html")
         if resp.code in [200]:
@@ -69,7 +69,9 @@ class Command(object):
                     ucont = content.lower().decode("utf-8")
                 parser = etree.HTML(ucont)
                 title = parser.xpath(u"//title")
-                body = u"网页标题: "+title[0].text if len(title) >= 1 else None
+                title = title[0].text if len(title) >= 1 else None
+                if title:
+                    body += u"网页标题: "+title.replace("\r", "").replace("\n", "")
                 if isredirect:
                     body += u"(重定向到:{0})".format(url)
         elif resp.code in [302, 301]:
