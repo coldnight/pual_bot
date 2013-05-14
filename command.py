@@ -70,7 +70,7 @@ class Command(object):
                 else:
                     charset = ""
 
-                if charset.lower().strip() == "gb2132":
+                if charset.lower().strip() == "gb2312":
                     charset = "gbk"
 
                 if charset:
