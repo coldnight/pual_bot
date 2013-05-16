@@ -25,6 +25,15 @@ ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
         u"HomePage  :   http://t.cn/zTocACq\n"\
         u"Project@  :   http://git.io/hWy9nQ"
 
+HELP_DOC =  u"""Pual 使用指南:
+    -tr <content>    可以对<content>进行英汉互译
+    ```<type>\\n<code>  可以将<code>以<type>高亮的方式贴到http://paste.linuxzen.com
+    >>> <statement>  可以执行Python语句, 并为你个人将这个语句产生的定义放在服务器
+    ping Pual        可以查看Pual是否在线
+    about Pual       可以查看Pual相关信息
+    help Pual        显示本信息
+"""
+
 
 URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
                     "?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)",
@@ -103,14 +112,18 @@ class MessageDispatch(object):
             self.cmd.paste(code, send_msg, typ)
             return
 
-        if content.strip() == "ping " + self.webqq.nickname:
+        if content.strip().lower() == "ping " + self.webqq.nickname.lower():
             body = u"I am here ^ ^"
             send_msg(body)
             return
 
-        if content.strip() == "about " + self.webqq.nickname:
+        if content.strip().lower() == "about " + self.webqq.nickname.lower():
             body = ABOUT_STR
             send_msg(body)
+            return
+
+        if content.strip().lower() == "help " + self.webqq.nickname.lower():
+            send_msg(HELP_DOC)
             return
 
         if content.strip() == "uptime " + self.webqq.nickname:
