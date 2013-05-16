@@ -140,14 +140,15 @@ class Command(object):
         """
         url = "http://pythonec.appspot.com/shell"
         #url = "http://localhost:8080/shell"
-        params = [("session", session), ("statement", statement.encode("utf-8"))]
+        params = [("session", session),
+                  ("statement", statement.encode("utf-8"))]
         request = self.http_stream.make_get_request(url, params)
 
         def read_shell(resp, callback):
             data = resp.read()
             if not data:
                 data = "OK"
-            callback(data)
+            callback(data.decode("utf-8"))
             return
         self.http_stream.add_request(request,
                                      partial(read_shell, callback = callback))
