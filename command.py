@@ -145,6 +145,8 @@ class Command(object):
 
         def read_shell(resp, callback):
             data = resp.read()
+            if not data:
+                data = "OK"
             callback(data)
             return
         self.http_stream.add_request(request,
