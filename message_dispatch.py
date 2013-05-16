@@ -62,7 +62,7 @@ class MessageDispatch(object):
         if content:
             pre = u"{0}: ".format(uname)
             callback = partial(self.webqq.send_group_msg, gcode)
-            self.handle_content(content, callback, pre)
+            self.handle_content(uin, content, callback, pre)
 
 
     def handle_qq_message(self, message):
@@ -73,11 +73,12 @@ class MessageDispatch(object):
         content = self.handle_qq_msg_contents(contents)
         if content:
             callback = partial(self.webqq.send_buddy_msg, from_uin)
-            self.handle_content(content, callback)
+            self.handle_content(from_uin, content, callback)
 
-    def handle_content(self, content, callback, pre = None):
+    def handle_content(self, from_uin, content, callback, pre = None):
         """ 处理内容
         Arguments:
+            `from_uin`  -       发送者uin
             `content`   -       内容
             `callback`  -       仅仅接受内容参数的回调
             `pre`       -       处理后内容前缀
@@ -127,6 +128,11 @@ class MessageDispatch(object):
             body = content.lstrip(st).strip()
             self.cmd.cetr(body, send_msg, web)
             return
+
+        if content.startswith(">>>"):
+            body = content.lstrip(">").lstrip(" ")
+            self.cmd.shell(from_uin, body, send_msg)
+
 
         if u"提问的智慧" in content:
             bodys = []

@@ -130,6 +130,27 @@ class Command(object):
             content = u"我出错了, 没办法执行, 我正在改"
         callback(content)
 
+
+    def shell(self, session, statement, callback):
+        """ 实现Python Shell
+        Arguments:
+            `session`   -   区别用户的shell
+            `statement` -   Python语句
+            `callback`  -   发送结果的回调
+        """
+        url = "http://shell.appspot.com/shell.do"
+        #url = "http://localhost:8080/shell.do"
+        params = [("session", session), ("statement", statement.encode("utf-8"))]
+        request = self.http_stream.make_get_request(url, params)
+
+        def read_shell(resp, callback):
+            data = resp.read()
+            callback(data)
+            return
+        self.http_stream.add_request(request,
+                                     partial(read_shell, callback = callback))
+
+
     def paste(self, code, callback, typ = "text"):
         """ 贴代码 """
         url = "http://paste.linuxzen.com"
