@@ -138,8 +138,8 @@ class Command(object):
             `statement` -   Python语句
             `callback`  -   发送结果的回调
         """
-        url = "http://shell.appspot.com/shell.do"
-        #url = "http://localhost:8080/shell.do"
+        url = "http://pythonec.appspot.com/shell"
+        #url = "http://localhost:8080/shell"
         params = [("session", session), ("statement", statement.encode("utf-8"))]
         request = self.http_stream.make_get_request(url, params)
 
