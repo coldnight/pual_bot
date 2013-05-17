@@ -325,7 +325,16 @@ class HTTPStream(object):
                 del self.fd_map[fd]
                 self.stop()
                 return
-            args = readback(resp)
+            try:
+                args = readback(resp)
+            except Exception, err:
+                logging.error(u"Read response error {0!r}".format(err))
+                self.ioloop.remove_handler(fd)
+                s.close()
+                del self.fd_map[fd]
+                self.stop()
+                return
+
             s.setblocking(False)
             if args and len(args) == 3:
                 self.add_delay_request(*args)
