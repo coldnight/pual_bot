@@ -138,7 +138,7 @@ class Command(object):
             `statement` -   Python语句
             `callback`  -   发送结果的回调
         """
-        if statement in ["cls", "clear"]:
+        if statement.strip() in ["cls", "clear"]:
             url = "http://pythonec.appspot.com/drop"
             params = [("session", session),]
         else:
