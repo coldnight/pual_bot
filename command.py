@@ -138,10 +138,14 @@ class Command(object):
             `statement` -   Python语句
             `callback`  -   发送结果的回调
         """
-        url = "http://pythonec.appspot.com/shell"
-        #url = "http://localhost:8080/shell"
-        params = [("session", session),
-                  ("statement", statement.encode("utf-8"))]
+        if statement in ["cls", "clear"]:
+            url = "http://pythonec.appspot.com/drop"
+            params = [("session", session),]
+        else:
+            url = "http://pythonec.appspot.com/shell"
+            #url = "http://localhost:8080/shell"
+            params = [("session", session),
+                    ("statement", statement.encode("utf-8"))]
         request = self.http_stream.make_get_request(url, params)
 
         def read_shell(resp, callback):
