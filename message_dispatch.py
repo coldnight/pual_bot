@@ -25,8 +25,7 @@ ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
         u"HomePage  :   http://t.cn/zTocACq\n"\
         u"Project@  :   http://git.io/hWy9nQ"
 
-HELP_DOC =  u"http://paste.linuxzen.com/show/370"
-
+HELP_DOC =  u"http://paste.linuxzen.com/p/Mzcw/text"
 u"""Pual 使用指南:
     -tr <content>    可以对<content>进行英汉互译
     ```<type>\\n<code>  可以将<code>以<type>高亮的方式贴到http://paste.linuxzen.com
