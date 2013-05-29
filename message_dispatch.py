@@ -132,6 +132,14 @@ class MessageDispatch(object):
             send_msg(body)
             return
 
+        if content.startswith("Pual"):
+            content = content.strip("Pual ")
+            if content:
+                self.cmd.simsimi(content, send_msg)
+            else:
+                send_msg(u"你总的说点什么吧")
+            return
+
         if content.startswith("-tr"):
             if content.startswith("-trw"):
                 web = True

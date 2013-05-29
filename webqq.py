@@ -171,6 +171,18 @@ class WebQQ(object):
         request = self.http_stream.make_get_request(url, params)
         self.http_stream.add_request(request, self.before_login)
 
+        # 获取SimSimi的cookie
+        cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
+        cookie_params = (("lc", "ch"),)
+        req = self.http_stream.make_get_request(cookie_url, cookie_params)
+        req.add_header("Referer", "http://www.simsimi.com/talk.htm")
+        self.http_stream.add_request(req)
+
+        req = self.http_stream.make_get_request("http://www.simsimi.com/func/langInfo",
+                                                cookie_params)
+        req.add_header("Referer", "http://www.simsimi.com/talk.htm?lc=ch")
+        self.http_stream.add_request(req)
+
 
     def before_login(self, resp):
         """ 登录之前的操作

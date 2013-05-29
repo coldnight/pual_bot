@@ -180,6 +180,23 @@ class Command(object):
             callback(content)
 
 
+    def simsimi(self, content, callback):
+        """ simsimi 小黄鸡 """
+        msg_url = "http://www.simsimi.com/func/req"
+        msg_params = (("msg", content.encode("utf-8")), ("lc", "ch"))
+        request = self.http_stream.make_get_request(msg_url, msg_params)
+        request.add_header("Referer", "http://www.simsimi.com/talk.htm?lc=ch")
+        request.add_header("X-Requested-With", "XMLHttpRequest")
+
+        def read_simsimi(resp):
+            result = resp.read()
+            if result:
+                response = json.loads(result)
+                callback(response.get("response"))
+
+        self.http_stream.add_request(request, read_simsimi)
+
+
     def cetr(self, source, callback,  web = False):
         """ 调用有道接口进行英汉互译 """
         key = YOUDAO_KEY
