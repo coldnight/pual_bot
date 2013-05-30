@@ -35,3 +35,6 @@ easy_install tornado
 
 ## 2013-05-29
 * 添加SimSimi聊天机器人, 发送`Pual`打头的信息将会和`Simsimi`机器人互动
+
+
+如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业
