@@ -630,15 +630,23 @@ class WebQQ(object):
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
 
-    def main():
+    def fork_main():
         pid = os.fork()
         if pid > 0:
             print "Main process wait child exit with pid", pid
             os.waitpid(pid, 0)
-            main()
+            fork_main()
         else:
             print "Child process run webqq with pid", pid
             webqq = WebQQ(QQ, QQ_PWD)
             webqq.run()
 
-    main()
+    def non_fork_main():
+        while True:
+            webqq = WebQQ(QQ, QQ_PWD)
+            webqq.run()
+
+    if hasattr(os, "fork"):
+        fork_main()
+    else:
+        non_fork_main()
