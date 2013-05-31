@@ -132,8 +132,8 @@ class MessageDispatch(object):
             send_msg(body)
             return
 
-        if content.startswith("Pual"):
-            content = content.strip("Pual ")
+        if content.startswith(self.webqq.nickname):
+            content = content.strip(self.webqq.nickname).strip()
             if content:
                 self.cmd.simsimi(content, send_msg)
             else:
