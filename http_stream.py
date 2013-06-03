@@ -31,6 +31,9 @@ logging.basicConfig(level = logging.DEBUG,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
 """
 
+err_map = {-1:"socket time out", 0:"socket unknow error", -2:"BadStatusLine",
+           -3: "Response error"}
+
 class Form(object):
     def __init__(self):
         self.form_fields = []
@@ -266,10 +269,15 @@ class HTTPStream(object):
         except socket.timeout, err:
             if errorback:
                 errorback(errcode = -1, errmsg = "<Time Out>")
+            else:
+                self.stop()
             return
         except socket.error, err:
             logging.error("Make socket from request Error {0!r}".format(err))
-            self.stop()
+            if errorback:
+                errorback(errorcode = 0, errmsg = err)
+            else:
+                self.stop()
             return
 
         fd = sock.fileno()
@@ -314,25 +322,30 @@ class HTTPStream(object):
                 resp = self.http_sock.make_response(s, request)
             except httplib.BadStatusLine:
                 if errback:
-                    errback(errcode = -2, errmsg = "<Unknow error>")
+                    errback(errcode = -2, errmsg = "<BadStatusLine error>")
                 self.ioloop.remove_handler(fd)
                 return
             except Exception, err:
                 logging.error(u"Make response error {0!r}".format(err))
-                logging.info(u"Restart")
                 self.ioloop.remove_handler(fd)
                 s.close()
                 del self.fd_map[fd]
-                self.stop()
+                if errback:
+                    errback(errcode = -3, errmsg = "<Response error>")
+                else:
+                    self.stop()
                 return
             try:
                 args = readback(resp)
             except Exception, err:
                 logging.error(u"Read response error {0!r}".format(err))
                 self.ioloop.remove_handler(fd)
-                s.close()
                 del self.fd_map[fd]
-                self.stop()
+                s.close()
+                if errback:
+                    errback(errcode = -3, errmsg = "<Read Response Error>")
+                else:
+                    self.stop()
                 return
 
             s.setblocking(False)

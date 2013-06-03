@@ -191,8 +191,11 @@ class Command(object):
         def read_simsimi(resp):
             result = resp.read()
             if result:
-                response = json.loads(result)
-                callback(response.get("response"))
+                try:
+                    response = json.loads(result)
+                    callback(response.get("response"))
+                except ValueError:
+                    callback(u"返回数据异常")
 
         self.http_stream.add_request(request, read_simsimi)
 

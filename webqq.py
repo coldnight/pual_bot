@@ -149,7 +149,7 @@ class WebQQ(object):
 
         return "{0} up {1} {2}".format(up_time, num, unit)
 
-    def check(self):
+    def check(self, **kwargs):
         """ 检查是否需要验证码
         url :
             http://check.ptlogin2.qq.com/check
