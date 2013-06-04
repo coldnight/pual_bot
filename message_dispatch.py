@@ -94,6 +94,7 @@ class MessageDispatch(object):
             `pre`       -       处理后内容前缀
         """
         send_msg = partial(self.send_msg, callback = callback, nick = pre)
+        content = content.strip()
 
         urls = URL_RE.findall(content)
         if urls:
