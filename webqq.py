@@ -22,8 +22,13 @@ from http_stream import HTTPStream
 from message_dispatch import MessageDispatch
 from command import upload_file
 from config import UPLOAD_CHECKIMG
+try:
+    from config import DEBUG
+except ImportError:
+    DEBUG = True
 
-logging.basicConfig(level = logging.DEBUG,
+
+logging.basicConfig(level = logging.DEBUG if DEBUG else logging.INFO,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
 
 

@@ -1,5 +1,8 @@
 #-*- coding:utf-8 -*-
 
+# 是否输出调试信息
+DEBUG = True
+
 # QQ 号码
 QQ = 123456
 
