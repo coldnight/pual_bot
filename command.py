@@ -196,13 +196,13 @@ class Command(object):
                     res = response.get("response")
                     if not res or (res and res.startswith("Unauthorized access!.")):
                         logging.warn("SimSimi error with response {0}".format(res))
-                        self.simsimi(content, callback)
+                        #self.simsimi(content, callback)
                         return
 
                     callback(response.get("response"))
                 except ValueError:
                     logging.warn("SimSimi error with response {0}".format(result))
-                    self.simsimi(content, callback)
+                    #self.simsimi(content, callback)
 
         self.http_stream.add_request(request, read_simsimi)
 
