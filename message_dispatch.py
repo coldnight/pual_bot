@@ -133,9 +133,9 @@ class MessageDispatch(object):
             send_msg(body)
             return
 
-        if content.startswith(self.webqq.nickname.lower()) \
-           or content.endswith(self.webqq.nickname.lower()):
-            content = content.strip(self.webqq.nickname.lower()).strip()
+        if content.lower().startswith(self.webqq.nickname.lower()) \
+           or content.lower().endswith(self.webqq.nickname.lower()):
+            content = content.lower().strip(self.webqq.nickname.lower()).strip()
             if content:
                 self.cmd.simsimi(content, send_msg)
             else:
