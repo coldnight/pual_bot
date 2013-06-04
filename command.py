@@ -37,6 +37,7 @@ def upload_file(filename, path):
 
 class Command(object):
     http_stream = HTTPStream.instance()
+    _sim_try = {}
 
     def url_info(self, url, callback, isredirect = False):
         """ 获取url信息
@@ -195,14 +196,21 @@ class Command(object):
                     response = json.loads(result)
                     res = response.get("response")
                     if not res or (res and res.startswith("Unauthorized access!.")):
-                        logging.warn("SimSimi error with response {0}".format(res))
-                        #self.simsimi(content, callback)
+                        if not self._sim_try.has_key(content):
+                            self._sim_try[content] = 0
+                        if self._sim_try.get(content) < 10:
+                            logging.warn("SimSimi error with response {0}".format(res))
+                            self._sim_try[content] += 1
+                            self.simsimi(content, callback)
+                        else:
+                            callback(u"T^T ip被SimSimi封了, 无法应答")
                         return
 
+                    self._sim_try[content] = 0
                     callback(response.get("response"))
                 except ValueError:
                     logging.warn("SimSimi error with response {0}".format(result))
-                    #self.simsimi(content, callback)
+                    self.simsimi(content, callback)
 
         self.http_stream.add_request(request, read_simsimi)
 
