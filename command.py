@@ -193,6 +193,10 @@ class Command(object):
             if result:
                 try:
                     response = json.loads(result)
+                    if response.get("response", "").startswith("Unauthorized access!."):
+                        self.simsimi(content, callback)
+                        return
+
                     callback(response.get("response"))
                 except ValueError:
                     self.simsimi(content, callback)
