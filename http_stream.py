@@ -370,7 +370,7 @@ class HTTPStream(object):
                 del self.fd_map[fd]
 
         if event & IOLoop.ERROR:
-            logging.debug(u"Reuqest {0} {1} ERROR".format(
+            logging.warn(u"Reuqest {0} {1} ERROR".format(
                 request.get_full_url(), request.get_method()))
             pass
 
