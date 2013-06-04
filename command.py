@@ -203,6 +203,7 @@ class Command(object):
                             self._sim_try[content] += 1
                             self.simsimi(content, callback)
                         else:
+                            self._sim_try[content] = 0
                             callback(u"T^T ip被SimSimi封了, 无法应答")
                         return
 
