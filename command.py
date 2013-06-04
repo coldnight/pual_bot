@@ -195,7 +195,7 @@ class Command(object):
                     response = json.loads(result)
                     callback(response.get("response"))
                 except ValueError:
-                    self.simimi(content, callback)
+                    self.simsimi(content, callback)
 
         self.http_stream.add_request(request, read_simsimi)
 
