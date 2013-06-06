@@ -182,6 +182,13 @@ class Command(object):
             callback(content)
 
 
+    def teach(self, say, response):
+        url = "http://paste.linuxzen.com/bot/teach"
+        params = (("say", say), ("res", response))
+        req = self.http_stream.make_get_request(url, params)
+        self.http_stream.add_request(req)
+
+
     def simsimi(self, content, callback):
         """ simsimi 小黄鸡 """
         msg_url = "http://www.simsimi.com/func/req"
@@ -211,7 +218,8 @@ class Command(object):
                         return
 
                     self._sim_try[content] = 0
-                    callback(response.get("response"))
+                    callback(res)
+                    self.teach(content, res)
                 except ValueError:
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
