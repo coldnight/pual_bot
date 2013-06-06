@@ -70,6 +70,7 @@ class MessageDispatch(object):
         content = self.handle_qq_msg_contents(contents)
         uname = self.webqq.get_group_member_nick(gcode, uin)
         if content:
+            logging.info(u"Got Group Message {0} from {1}".format(content, gcode))
             pre = u"{0}: ".format(uname)
             callback = partial(self.webqq.send_group_msg, gcode)
             self.handle_content(uin, content, callback, pre)
@@ -82,6 +83,7 @@ class MessageDispatch(object):
         contents = value.get("content", [])
         content = self.handle_qq_msg_contents(contents)
         if content:
+            logging.info(u"Got Friend Message {0} from {1}".format(content, from_uin))
             callback = partial(self.webqq.send_buddy_msg, from_uin)
             self.handle_content(from_uin, content, callback)
 

@@ -583,7 +583,8 @@ class WebQQ(object):
             }
         """
         gid = self.group_info.get(group_uin).get("gid")
-        content = self.make_msg_content(content)
+        source = content
+        content = self.make_msg_content(source)
 
         url = "http://d.web2.qq.com/channel/send_qun_msg2"
         r = {"group_uin": gid, "content": content,
@@ -596,7 +597,7 @@ class WebQQ(object):
         request = self.http_stream.make_post_request(url, params)
         request.add_header("Referer",  "http://d.web2.qq.com/proxy.html"
                            "?v=20110331002&callback=1&id=3")
-        callback = partial(self.send_group_msg_back, content, group_uin)
+        callback = partial(self.send_group_msg_back, source, group_uin)
         delay = 0
 
         if time.time() - self.last_group_msg_time < 0.5 or\
