@@ -40,7 +40,7 @@ easy_install tornado lxml
 * SimSimi容错, 去掉错误显示
 * 支持`Pual`打头或结尾的消息, 不群分大小写
 
-# 2013-06-06
+## 2013-06-06
 * 防止SimSimi被封ip, SimSimi支持代理, 推荐goagent, 配置参见`config.py.example`
 
 
