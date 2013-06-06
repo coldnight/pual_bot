@@ -130,6 +130,7 @@ class Command(object):
                 content = u"ERR: " + result.get("err")
 
         except ValueError:
+            logging.warn(traceback.format_exc)
             content = u"我出错了, 没办法执行, 我正在改"
         callback(content)
 
@@ -221,6 +222,7 @@ class Command(object):
                         callback(res)
                         self.teach(content, res)
                 except ValueError:
+                    logging.warn(traceback.format_exc)
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
@@ -253,11 +255,13 @@ class Command(object):
             with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
                 data = gf.read()
         except:
+            logging.warn(traceback.format_exc)
             data = source
 
         try:
             result = json.loads(data)
         except ValueError:
+            logging.warn(traceback.format_exc)
             body = u"error"
         else:
             errorCode = result.get("errorCode")
