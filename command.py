@@ -36,7 +36,7 @@ def upload_file(filename, path):
     return urllib2.urlopen(req)
 
 black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员",
-               u"技巧", u"必看", u"必学"]
+               u"技巧", u"必看", u"必学", u"加我", u"搜索"]
 
 def is_black_msg(content):
     coe = 0
