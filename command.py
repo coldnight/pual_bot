@@ -35,6 +35,17 @@ def upload_file(filename, path):
     req.add_data(str(form))
     return urllib2.urlopen(req)
 
+black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员",
+               u"技巧", u"必看", u"必学"]
+
+def is_black_msg(content):
+    coe = 0
+    for bw in black_words:
+        if bw in content:
+            coe += 1
+
+    if coe >= 2:
+        return True
 
 class Command(object):
     http_stream = HTTPStream.instance()
@@ -206,6 +217,10 @@ class Command(object):
                 try:
                     response = json.loads(result)
                     res = response.get("response")
+
+                    if is_black_msg(res):
+                        return self.simsimi(content, callback)
+
                     if not res or (res and res.startswith("Unauthorized access!.")):
                         if not self._sim_try.has_key(content):
                             self._sim_try[content] = 0
