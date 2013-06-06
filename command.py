@@ -38,6 +38,7 @@ def upload_file(filename, path):
 class Command(object):
     http_stream = HTTPStream.instance()
     _sim_try = {}
+    simsimi_proxy = False
 
     def url_info(self, url, callback, isredirect = False):
         """ 获取url信息
@@ -181,7 +182,7 @@ class Command(object):
             callback(content)
 
 
-    def simsimi(self, content, callback, proxy = False):
+    def simsimi(self, content, callback):
         """ simsimi 小黄鸡 """
         msg_url = "http://www.simsimi.com/func/req"
         msg_params = (("msg", content.encode("utf-8")), ("lc", "ch"))
@@ -200,8 +201,10 @@ class Command(object):
                             self._sim_try[content] = 0
                         if self._sim_try.get(content) < 10:
                             logging.warn("SimSimi error with response {0}".format(res))
+                            if not self.simsimi_proxy and self._sim_try[content] > 1:
+                                self.simsimi_proxy = True
                             self._sim_try[content] += 1
-                            self.simsimi(content, callback, True)
+                            self.simsimi(content, callback)
                         else:
                             self._sim_try[content] = 0
                             callback(u"T^T ip被SimSimi封了, 无法应答")
@@ -213,7 +216,7 @@ class Command(object):
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
-        if proxy:
+        if self.simsimi_proxy:
             self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
         else:
             self.http_stream.add_request(request, read_simsimi)
