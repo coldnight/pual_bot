@@ -25,3 +25,6 @@ MAX_RECEIVER_LENGTH = 300
 
 # 是否上传验证图片, False则存在本地
 UPLOAD_CHECKIMG = False
+
+# SimSimi代理防止ip被官方封掉
+SimSimi_Proxy = ("host", "port")

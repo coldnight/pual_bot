@@ -146,7 +146,7 @@ class HTTPSock(object):
         return host
 
 
-    def make_http_sock_data(self, request):
+    def make_http_sock_data(self, request, proxy = None):
         """ 根据urllib2.Request 构建socket和用于发送的HTTP源数据 """
         url = request.get_full_url()
         headers = request.headers
@@ -155,38 +155,47 @@ class HTTPSock(object):
         host, port = urllib.splitport(parse.netloc)
         typ = parse.scheme
         port = port if port else getattr(httplib, typ.upper() + "_PORT")
-        data =  self.get_http_source(parse, data, headers)
+        data =  self.get_http_source(parse, data, headers, proxy)
         if hasattr(self, "do_" + typ):
-            return getattr(self, "do_"+typ)(host, port), data
+            return getattr(self, "do_"+typ)(host, port, proxy), data
 
-    def do_http(self, host, port):
+    def do_http(self, host, port, proxy = None):
         host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(3)
+        if proxy:
+            host, port = proxy
         sock.connect((host, int(port)))
         sock.setblocking(0)
         return sock
 
-    def do_https(self, host, port, keyfile = None, certfile = None):
+    def do_https(self, host, port, proxy = None, keyfile = None, certfile = None):
         host = self.get_host(host)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(3)
+        if proxy:
+            host, port = proxy
         sock.connect((host, int(port)))
         sock = ssl.wrap_socket(sock, keyfile, certfile)
         sock.setblocking(0)
         return sock
 
-    def get_http_source(self, parse, data, headers):
+    def get_http_source(self, parse, data, headers, proxy = None):
         path = parse.path
         query = parse.query
         path = path + "?" + query if query else path
         path = path if path else "/"
         method = "POST" if data else "GET"
+        if proxy:
+            path = "{0}://{1}{2}".format(parse.scheme, parse.netloc, path)
         _buffer= ["{0} {1} HTTP/1.1".format(method, path)]
         e_headers = [(k.lower(), v) for k, v in headers.items()]
         headers = []
         headers.append(("Host", parse.netloc))
-        headers.append(("Connection", "keep-alive"))
+        if proxy:
+            headers.append(("Proxy-Connection", "keep-alive"))
+        else:
+            headers.append(("Connection", "keep-alive"))
         headers.append(("Accept", "*/*"))
         headers.append(("Accept-Charset", "UTF-8,*;q=0.5"))
         #headers.append(("Accept-Encoding", "gzip,deflate,sdch"))
@@ -251,7 +260,7 @@ class HTTPStream(object):
     def make_get_url(self, url, params):
         return self.http_sock.make_get_url(url, params)
 
-    def add_request(self, request, readback = None, errorback = None):
+    def add_request(self, request, readback = None, errorback = None, proxy = None):
         """ 往流里添加请求
         Arguments:
             `request`   -   urllib2.Request
@@ -265,7 +274,7 @@ class HTTPStream(object):
         logging.debug(u"Add reuqest {0} {1}".format(request.get_full_url(),
                                                     request.get_method()))
         try:
-            sock, data = self.http_sock.make_http_sock_data(request)
+            sock, data = self.http_sock.make_http_sock_data(request, proxy)
         except socket.timeout, err:
             if errorback:
                 errorback(errcode = -1, errmsg = "<Time Out>")

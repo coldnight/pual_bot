@@ -17,7 +17,7 @@ from cStringIO import StringIO
 from lxml import etree
 
 from http_stream import HTTPStream, Form
-from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH
+from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH, SimSimi_Proxy
 
 
 def upload_file(filename, path):
@@ -213,7 +213,8 @@ class Command(object):
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
-        self.http_stream.add_request(request, read_simsimi)
+        import pdb;pdb.set_trace()
+        self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
 
 
     def cetr(self, source, callback,  web = False):
