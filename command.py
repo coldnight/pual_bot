@@ -217,10 +217,10 @@ class Command(object):
                             self._sim_try[content] = 0
                             callback(u"T^T ip被SimSimi封了, 无法应答")
                         return
-
-                    self._sim_try[content] = 0
-                    callback(res)
-                    self.teach(content, res)
+                    else:
+                        self._sim_try[content] = 0
+                        callback(res)
+                        self.teach(content, res)
                 except ValueError:
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
