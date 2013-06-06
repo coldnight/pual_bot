@@ -277,14 +277,14 @@ class HTTPStream(object):
         try:
             sock, data = self.http_sock.make_http_sock_data(request, proxy)
         except socket.timeout, err:
-            logging.warn(traceback.format_exc)
+            logging.warn(traceback.format_exc())
             if errorback:
                 errorback(errcode = -1, errmsg = "<Time Out>")
             else:
                 self.stop()
             return
         except socket.error, err:
-            logging.warn(traceback.format_exc)
+            logging.warn(traceback.format_exc())
             logging.error("Make socket from request Error {0!r}".format(err))
             if errorback:
                 errorback(errorcode = 0, errmsg = err)
@@ -333,13 +333,13 @@ class HTTPStream(object):
             try:
                 resp = self.http_sock.make_response(s, request)
             except httplib.BadStatusLine:
-                logging.warn(traceback.format_exc)
+                logging.warn(traceback.format_exc())
                 if errback:
                     errback(errcode = -2, errmsg = "<BadStatusLine error>")
                 self.ioloop.remove_handler(fd)
                 return
             except Exception, err:
-                logging.warn(traceback.format_exc)
+                logging.warn(traceback.format_exc())
                 logging.error(u"Make response error {0!r}".format(err))
                 self.ioloop.remove_handler(fd)
                 s.close()
@@ -352,7 +352,7 @@ class HTTPStream(object):
             try:
                 args = readback(resp)
             except Exception, err:
-                logging.warn(traceback.format_exc)
+                logging.warn(traceback.format_exc())
                 logging.error(u"Read response error {0!r}".format(err))
                 self.ioloop.remove_handler(fd)
                 del self.fd_map[fd]
