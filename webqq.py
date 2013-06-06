@@ -569,7 +569,7 @@ class WebQQ(object):
                 psessionid
             }
         """
-        gid = self.group_info.get(group_uin).get("gid")
+        gid = self.group_info.get(group_uin, {}).get("gid")
         source = content
         content = self.make_msg_content(source)
 
