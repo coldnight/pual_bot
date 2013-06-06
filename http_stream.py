@@ -27,10 +27,6 @@ import itertools
 from functools import partial
 from tornado.ioloop import IOLoop
 
-"""
-logging.basicConfig(level = logging.DEBUG,
-                    format = "%(asctime)s [%(levelname)s] %(message)s")
-"""
 
 err_map = {-1:"socket time out", 0:"socket unknow error", -2:"BadStatusLine",
            -3: "Response error"}
@@ -222,13 +218,17 @@ class HTTPSock(object):
 class HTTPStream(object):
     """ HTTP流
     应当按照如下方法调用:
-        import urllib2
-
         http_stream = HTTPStream.instance()
-        request = urllib2.Request("http://www.linuxzen.com")
-        def read_callback(resp):
+        def readback(resp):
             print resp.read()
-        http_stream.add_request(request, read_callback)
+
+        def errorback(errcode, errmsg):
+            print "Errno", errcode, errmsg
+
+        http_stream.get("http://www.badidu.com")
+        http_stream.get("http://www.baidu.com", readback = readback)
+        http_stream.get("http://www.baidu.com", readback = readback,
+                            errorback = errorback)
         http_stream.start()
     """
     _ioloop = IOLoop.instance()
@@ -236,6 +236,7 @@ class HTTPStream(object):
     cookie = _http_sock.cookie
     cookiejar = _http_sock.cookiejar
     _instance = None
+    timeout_retry = {}
 
     def __init__(self, ioloop, http_sock):
         self.ioloop = ioloop
@@ -261,6 +262,58 @@ class HTTPStream(object):
     def make_get_url(self, url, params):
         return self.http_sock.make_get_url(url, params)
 
+    def get(self, url, params = {}, **kwargs):
+        """ get方法请求HTTP
+        Arguments:
+            `url`       -   请求url
+            `params`    -   请求参数
+            `kwargs`:
+                `headers`   -   额外头部信息
+                `readback`  -   读取HTTP响应的函数
+                `errorback` -   当请求发送错误时调用的函数
+                `proxy`     -   请求所使用的代理 ("host", port) 格式
+                `delay`     -   延迟请求的时间单位为秒
+        """
+        self.request(self.make_get_request, url, params, **kwargs)
+
+
+    def post(self, url, params = {}, **kwargs):
+        """ post方法请求HTTP
+        Arguments:
+            `url`       -   请求url
+            `params`    -   请求参数
+            `kwargs`:
+                `headers`   -   额外头部信息
+                `readback`  -   读取HTTP响应的函数
+                `errorback` -   当请求发送错误时调用的函数
+                `proxy`     -   请求所使用的代理 ("host", port) 格式
+                `delay`     -   延迟请求的时间单位为秒
+        """
+        self.request(self.make_post_request, url, params, **kwargs)
+
+
+    def request(self, make_func, url, params, **kwargs):
+        """ 请求HTTP
+        Arguments:
+            `make_func` -   制造请求的函数
+            `url`       -   请求url
+            `params`    -   请求参数
+            `kwargs`:
+                `headers`   -   额外头部信息
+                `readback`  -   读取HTTP响应的函数
+                `errorback` -   当请求发送错误时调用的函数
+                `proxy`     -   请求所使用的代理 ("host", port) 格式
+                `delay`     -   延迟请求的时间单位为秒
+        """
+        headers = kwargs.pop("headers", {})
+        delay = kwargs.pop("delay", 0)
+        read_back = kwargs.pop("readback", None)
+        req = make_func(url, params)
+
+        [req.add_header(key, value) for key, value in headers.items()]
+        self.add_delay_request(req, read_back, delay, **kwargs)
+
+
     def add_request(self, request, readback = None, errorback = None, proxy = None):
         """ 往流里添加请求
         Arguments:
@@ -268,6 +321,7 @@ class HTTPStream(object):
             `readback`  -   读取相应的回调, 给这个回调传递一个Response
             `errorback` -   发生错误时的回调, 给这个回调传递一个错误代码, 和错误信息
                             错误代码 -1 超时
+            `proxy`     -   使用代理请求 ("host", port)
         """
         if not isinstance(request, urllib2.Request):
             raise ValueError, "Not a invaid requset"
@@ -287,7 +341,7 @@ class HTTPStream(object):
                     if self.timeout_retry.has_key(request):
                         self.timeout_retry[request] += 1
                     else:
-                        self.timeout_retry = 1
+                        self.timeout_retry[request] = 1
                     self.add_request(request, readback, errorback, proxy)
                 else:
                     self.stop()
@@ -320,18 +374,21 @@ class HTTPStream(object):
         self.ioloop.add_handler(fd, callback, IOLoop.WRITE)
 
 
-    def add_delay_request(self, request, readback, delay = 60):
-        t = threading.Thread(target = self._add_delay_request,
+    def add_delay_request(self, request, readback, delay = 60, **kw):
+        if not delay:
+            return self.add_request(request, readback, **kw)
+        _add_delay_request = partial(self._add_delay_request, **kw)
+        t = threading.Thread(target = _add_delay_request,
                              args = (request, readback, delay))
         t.setDaemon(True)
         t.start()
 
-    def _add_delay_request(self, request, readback, delay = 60):
+    def _add_delay_request(self, request, readback, delay = 60, **kw):
         if isinstance(threading.currentThread(), threading._MainThread):
             raise threading.ThreadError, "Can't run this function in _MainThread"
 
         time.sleep(delay)
-        self.add_request(request, readback)
+        self.add_request(request, readback, **kw)
 
 
     def _handle_events(self, request, data, readback, errback, fd, event):

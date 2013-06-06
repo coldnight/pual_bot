@@ -42,6 +42,8 @@ easy_install tornado lxml
 
 ## 2013-06-06
 * 防止SimSimi被封ip, SimSimi支持代理, 推荐goagent, 配置参见`config.py.example`
+* 对`HTTPStream`进行重构
+* 支持 socket.timeout 重试
 
 
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业
