@@ -12,6 +12,7 @@ import json
 import urllib2
 import httplib
 import logging
+import traceback
 from functools import partial
 from cStringIO import StringIO
 from lxml import etree
@@ -184,9 +185,9 @@ class Command(object):
 
     def teach(self, say, response):
         url = "http://paste.linuxzen.com/bot/teach"
-        params = (("say", say), ("res", response))
+        params = (("say", say.encode("utf-8")), ("res", response.encode("utf-8")))
         req = self.http_stream.make_get_request(url, params)
-        logging.info("Teach our bot {0}/{1}".format(say, response))
+        logging.info(u"Teach our bot {0}/{1}".format(say, response))
         self.http_stream.add_request(req)
 
 
@@ -209,8 +210,6 @@ class Command(object):
                             self._sim_try[content] = 0
                         if self._sim_try.get(content) < 10:
                             logging.warn("SimSimi error with response {0}".format(res))
-                            if not self.simsimi_proxy and self._sim_try[content] > 1:
-                                self.simsimi_proxy = True
                             self._sim_try[content] += 1
                             self.simsimi(content, callback)
                         else:
@@ -225,7 +224,7 @@ class Command(object):
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
-        if self.simsimi_proxy:
+        if SimSimi_Proxy:
             self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
         else:
             self.http_stream.add_request(request, read_simsimi)
