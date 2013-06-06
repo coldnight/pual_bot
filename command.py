@@ -186,6 +186,7 @@ class Command(object):
         url = "http://paste.linuxzen.com/bot/teach"
         params = (("say", say), ("res", response))
         req = self.http_stream.make_get_request(url, params)
+        logging.info("Teach our bot {0}/{1}".format(say, response))
         self.http_stream.add_request(req)
 
 
