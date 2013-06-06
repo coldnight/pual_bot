@@ -181,7 +181,7 @@ class Command(object):
             callback(content)
 
 
-    def simsimi(self, content, callback):
+    def simsimi(self, content, callback, proxy = False):
         """ simsimi 小黄鸡 """
         msg_url = "http://www.simsimi.com/func/req"
         msg_params = (("msg", content.encode("utf-8")), ("lc", "ch"))
@@ -201,7 +201,7 @@ class Command(object):
                         if self._sim_try.get(content) < 10:
                             logging.warn("SimSimi error with response {0}".format(res))
                             self._sim_try[content] += 1
-                            self.simsimi(content, callback)
+                            self.simsimi(content, callback, True)
                         else:
                             self._sim_try[content] = 0
                             callback(u"T^T ip被SimSimi封了, 无法应答")
@@ -213,8 +213,10 @@ class Command(object):
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
-        import pdb;pdb.set_trace()
-        self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
+        if proxy:
+            self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
+        else:
+            self.http_stream.add_request(request, read_simsimi)
 
 
     def cetr(self, source, callback,  web = False):
