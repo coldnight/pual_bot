@@ -281,7 +281,16 @@ class HTTPStream(object):
             if errorback:
                 errorback(errcode = -1, errmsg = "<Time Out>")
             else:
-                self.stop()
+                if not self.timeout_retry.has_key(request) or\
+                   self.timeout_retry[request] < 5:
+                    logging.warn("Retry...")
+                    if self.timeout_retry.has_key(request):
+                        self.timeout_retry[request] += 1
+                    else:
+                        self.timeout_retry = 1
+                    self.add_request(request, readback, errorback, proxy)
+                else:
+                    self.stop()
             return
         except socket.error, err:
             logging.warn(traceback.format_exc())
@@ -289,8 +298,19 @@ class HTTPStream(object):
             if errorback:
                 errorback(errorcode = 0, errmsg = err)
             else:
-                self.stop()
+                if not self.timeout_retry.has_key(request) or\
+                   self.timeout_retry[request] < 5:
+                    logging.warn("Retry...")
+                    if self.timeout_retry.has_key(request):
+                        self.timeout_retry[request] += 1
+                    else:
+                        self.timeout_retry = 1
+                    self.add_request(request, readback, errorback, proxy)
+                else:
+                    self.stop()
             return
+        else:
+            self.timeout_retry[request] = 0
 
         fd = sock.fileno()
         self.fd_map[fd] = sock
