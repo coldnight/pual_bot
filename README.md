@@ -45,5 +45,8 @@ easy_install tornado lxml
 * 对`HTTPStream`进行重构
 * 支持 socket.timeout 重试
 
+## 2013-06-07
+* 修复回应好友消息丢消息的情况
+* 修复好友消息互动和命令不用加机器人昵称前缀或后缀
 
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding:utf-8 -*-
 #
 # Copyright 2013 cold
 #
@@ -14,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# -*- coding:utf-8 -*-
 #
 #   Author  :   cold
 #   E-mail  :   wh_linux@126.com
@@ -564,8 +564,12 @@ class WebQQ(object):
         headers = {"Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3",
                    "Origin": "http://d.web2.qq.com"}
+        delay = self.get_delay(content)
+        def readback(resp):
+            self.last_msg_numbers -= 1
 
-        self.http_stream.post(url, params, headers = headers)
+        self.http_stream.post(url, params, headers = headers, delay = delay,
+                              readback = readback)
 
 
     def send_group_msg(self, group_uin, content):
@@ -600,6 +604,14 @@ class WebQQ(object):
         headers = {"Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"}
         callback = partial(self.send_group_msg_back, source, group_uin)
+
+        delay = self.get_delay(content)
+
+        self.http_stream.post(url, params, headers = headers, readback = callback,
+                              delay = delay)
+
+
+    def get_delay(self, content):
         delay = 0
 
         if time.time() - self.last_group_msg_time < 0.5 or\
@@ -612,8 +624,7 @@ class WebQQ(object):
 
         self.last_msg_numbers += 1
         self.last_msg_content = content
-        self.http_stream.post(url, params, headers = headers, readback = callback,
-                              delay = delay)
+        return delay
 
 
     def send_group_msg_back(self, content, group_uin, resp):
