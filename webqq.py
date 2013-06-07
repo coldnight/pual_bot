@@ -173,20 +173,17 @@ class WebQQ(object):
         url = "http://check.ptlogin2.qq.com/check"
         params = {"uin":self.qid, "appid":self.aid,
                   "r" : random.random()}
-        request = self.http_stream.make_get_request(url, params)
-        self.http_stream.add_request(request, self.before_login)
+        self.http_stream.get(url, params, readback = self.before_login)
 
         # 获取SimSimi的cookie
         cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
         cookie_params = (("lc", "ch"),)
-        req = self.http_stream.make_get_request(cookie_url, cookie_params)
-        req.add_header("Referer", "http://www.simsimi.com/talk.htm")
-        self.http_stream.add_request(req)
+        headers = {"Referer": "http://www.simsimi.com/talk.htm"}
+        self.http_stream.get(cookie_url, cookie_params, headers = headers)
 
-        req = self.http_stream.make_get_request("http://www.simsimi.com/func/langInfo",
-                                                cookie_params)
-        req.add_header("Referer", "http://www.simsimi.com/talk.htm?lc=ch")
-        self.http_stream.add_request(req)
+        headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
+        self.http_stream.get("http://www.simsimi.com/func/langInfo",
+                             cookie_params, headers = headers)
 
 
     def before_login(self, resp):
@@ -236,15 +233,15 @@ class WebQQ(object):
                   ("pttype", 1), ("dumy", ""), ("fp", "loginerroralert"),
                   ("mibao_css","m_webqq"), ("t",1), ("g",1), ("js_type",0),
                   ("js_ver", 10021)]
-        request = self.http_stream.make_get_request(url, params)
+        header = {}
         if self.require_check:
-            request.add_header("Referer",  "https://ui.ptlogin2.qq.com/cgi-"
+            header = {"Referer":  "https://ui.ptlogin2.qq.com/cgi-"
                             "bin/login?target=self&style=5&mibao_css=m_"
                             "webqq&appid=1003903&enable_qlogin=0&no_ver"
                             "ifyimg=1&s_url=http%3A%2F%2Fweb.qq.com%2Fl"
                             "oginproxy.html&f_url=loginerroralert&stron"
-                            "g_login=1&login_state=10&t=20130221001")
-        return request, self.login
+                            "g_login=1&login_state=10&t=20130221001"}
+        self.http_stream.get(url, params, headers = header, readback = self.login)
 
 
     def login(self, resp):
@@ -290,12 +287,11 @@ class WebQQ(object):
                 ("psessionid", "null")
                 ]
 
-        request = self.http_stream.make_post_request(url, params)
-
-        request.add_header("Referer", "http://d.web2.qq.com/proxy.html?"
-                           "v=20110331002&callback=1&id=3")
-        request.add_header("Origin", "http://d.web2.qq.com")
-        return request, self.update_friend
+        headers = {"Referer": "http://d.web2.qq.com/proxy.html?"
+                           "v=20110331002&callback=1&id=3",
+                   "Origin": "http://d.web2.qq.com"}
+        self.http_stream.post(url, params, headers = headers,
+                              readback= self.update_friend)
 
 
     def update_friend(self, resp, login = True):
@@ -312,19 +308,21 @@ class WebQQ(object):
 
         data = json.loads(resp.read())
         if login:
-            logging.info("WebQQ is logged in, start to update friend info")
-            self.psessionid = data.get("result", {}).get("psessionid")
             self.vfwebqq = data.get("result", {}).get("vfwebqq")
-            url = "http://s.web2.qq.com/api/get_user_friends2"
-            params = [("r", json.dumps({"h":"hello",
-                                        "vfwebqq":self.vfwebqq}))]
+            self.psessionid = data.get("result", {}).get("psessionid")
 
-            request = self.http_stream.make_post_request(url, params)
-            request.add_header( "Referer",
-                "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1")
 
-            read_back = partial(self.update_friend, login = False)
-            return request, read_back
+        url = "http://s.web2.qq.com/api/get_user_friends2"
+        params = [("r", json.dumps({"h":"hello", "vfwebqq":self.vfwebqq}))]
+        headers = {"Referer":
+            "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1"}
+
+        read_back = partial(self.update_friend, login = False)
+
+        if login:
+            logging.info("WebQQ is logged in, start to update friend info")
+            self.http_stream.post(url, params, headers = headers,
+                                  readback = read_back)
         else:
             logging.info("Friend info update")
             lst = data.get("result", {}).get("info", [])
@@ -332,17 +330,9 @@ class WebQQ(object):
                 uin = info.get("uin")
                 self.friend_info[uin] = info
             self.update_group()
-            url = "http://s.web2.qq.com/api/get_user_friends2"
-            params = [("r", json.dumps({"h":"hello",
-                                        "vfwebqq":self.vfwebqq}))]
 
-            request = self.http_stream.make_post_request(url, params)
-            request.add_header( "Referer",
-                "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1")
-
-            read_back = partial(self.update_friend, login = False)
-            return request, read_back, 300
-
+            self.http_stream.post(url, params, headers = headers, delay = 300,
+                                  readback = read_back)
 
 
     def update_group(self, resp = None):
@@ -363,12 +353,13 @@ class WebQQ(object):
         logging.info("Fetch group list...")
         url = "http://s.web2.qq.com/api/get_group_name_list_mask2"
         params = [("r", '{"vfwebqq":"%s"}' % self.vfwebqq),]
-        request = self.http_stream.make_post_request(url, params)
-        request.add_header("Origin", "http://s.web2.qq.com")
-        request.add_header("Referer", "http://s.web2.qq.com/proxy.ht"
-                                "ml?v=20110412001&callback=1&id=1")
+        headers = {"Origin": "http://s.web2.qq.com",
+                   "Referer": "http://s.web2.qq.com/proxy.html?v=2011041200"
+                   "1&callback=1&id=1"
+                   }
+        self.http_stream.post(url, params, headers = headers,
+                              readback = self.group_members)
 
-        self.http_stream.add_request(request, self.group_members)
 
     def group_members(self, resp):
         """ 获取群列表, 获取群列表中的成员
@@ -393,15 +384,16 @@ class WebQQ(object):
             url = "http://s.web2.qq.com/api/get_group_info_ext2"
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
                     ("t", int(time.time()))]
-            request = self.http_stream.make_get_request(url, params)
-            request.add_header( "Referer",
-                "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3")
+            headers = {"Referer":
+                "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"}
             read_back = self.do_group_members
             if i == len(group_list) -1 :
                 read_back = partial(read_back, gcode = gcode, last = True)
             else:
                 read_back = partial(read_back, gcode = gcode)
-            self.http_stream.add_request(request, read_back)
+
+            self.http_stream.get(url, params, headers = headers,
+                                 readback = read_back)
             self.group_info[gcode] = group
 
 
@@ -424,7 +416,7 @@ class WebQQ(object):
         if last and not self.poll_and_heart:
             logging.info("Fetch group's members done")
             self.poll()
-            self.heartbeat()
+            self.heartbeat(0)
 
 
     def poll(self):
@@ -455,16 +447,16 @@ class WebQQ(object):
                 "key": 0, "ids":[]}
         params = [("r", json.dumps(rdic)), ("clientid", self.clientid),
                 ("psessionid", self.psessionid)]
-        request = self.http_stream.make_post_request(url, params)
-        request.add_header( "Referer", "http://d.web2.qq.com/proxy.html?v="
-                            "20110331002&callback=1&id=2")
+        headers = {"Referer": "http://d.web2.qq.com/proxy.html?v="
+                            "20110331002&callback=1&id=2"}
 
-        read_back = partial(self.handle_msg, next_req = request)
-        self.http_stream.add_request(request, read_back)
+        self.http_stream.post(url, params, headers = headers,
+                              readback = self.handle_msg)
 
 
-    def handle_msg(self, resp, next_req):
+    def handle_msg(self, resp):
         """ 处理消息 """
+        self.poll()
         data = resp.read()
         try:
             msg = json.loads(data)
@@ -477,10 +469,8 @@ class WebQQ(object):
             traceback.print_exc()
             logging.error(u"Message can't loads: %s", data)
 
-        return next_req, partial(self.handle_msg, next_req = next_req)
 
-
-    def heartbeat(self):
+    def heartbeat(self, delay = 60):
         """ 开始心跳
         url:http://web.qq.com/web2/get_msg_tip
         方法: GET
@@ -504,15 +494,13 @@ class WebQQ(object):
                     ("rc", 1), ("lv", 2),
                 ("t", int(self.hb_time * 1000))]
 
-        request = self.http_stream.make_get_request(url, params)
-        read_back = partial(self.hb_next, next_req = request)
-        self.http_stream.add_request(request, read_back)
+        self.http_stream.get(url, params, readback = self.hb_next, delay = delay)
 
 
-    def hb_next(self, resp, next_req):
+    def hb_next(self, resp):
         """ 持续心跳 """
         logging.info("Heartbeat is done, continue to wait for 60 seconds")
-        return next_req, partial(self.hb_next, next_req = next_req), 60
+        self.heartbeat()
 
 
     def make_msg_content(self, content):
@@ -557,12 +545,11 @@ class WebQQ(object):
         self.msg_id += 1
         params = [("r",json.dumps(r)), ("clientid",self.clientid),
                   ("psessionid", self.psessionid)]
+        headers = {"Referer":
+            "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3",
+                   "Origin": "http://d.web2.qq.com"}
 
-        request = self.http_stream.make_post_request(url, params)
-        request.add_header( "Referer",
-            "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3")
-        request.add_header("Origin", "http://d.web2.qq.com")
-        self.http_stream.add_request(request)
+        self.http_stream.post(url, params, headers = headers)
 
 
     def send_group_msg(self, group_uin, content):
@@ -582,8 +569,9 @@ class WebQQ(object):
                 psessionid
             }
         """
-        gid = self.group_info.get(group_uin).get("gid")
-        content = self.make_msg_content(content)
+        gid = self.group_info.get(group_uin, {}).get("gid")
+        source = content
+        content = self.make_msg_content(source)
 
         url = "http://d.web2.qq.com/channel/send_qun_msg2"
         r = {"group_uin": gid, "content": content,
@@ -593,10 +581,9 @@ class WebQQ(object):
                 ("clientid", self.clientid)]
         self.msg_id += 1
 
-        request = self.http_stream.make_post_request(url, params)
-        request.add_header("Referer",  "http://d.web2.qq.com/proxy.html"
-                           "?v=20110331002&callback=1&id=3")
-        callback = partial(self.send_group_msg_back, content, group_uin)
+        headers = {"Referer":
+            "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"}
+        callback = partial(self.send_group_msg_back, source, group_uin)
         delay = 0
 
         if time.time() - self.last_group_msg_time < 0.5 or\
@@ -609,7 +596,9 @@ class WebQQ(object):
 
         self.last_msg_numbers += 1
         self.last_msg_content = content
-        self.http_stream.add_delay_request(request, callback, delay)
+        self.http_stream.post(url, params, headers = headers, readback = callback,
+                              delay = delay)
+
 
     def send_group_msg_back(self, content, group_uin, resp):
         logging.info(u"Send group message {0} to {1}".format(content, group_uin))

@@ -35,6 +35,17 @@ def upload_file(filename, path):
     req.add_data(str(form))
     return urllib2.urlopen(req)
 
+black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员",
+               u"技巧", u"必看", u"必学", u"加我", u"搜索"]
+
+def is_black_msg(content):
+    coe = 0
+    for bw in black_words:
+        if bw in content:
+            coe += 1
+
+    if coe >= 2:
+        return True
 
 class Command(object):
     http_stream = HTTPStream.instance()
@@ -48,11 +59,10 @@ class Command(object):
             `callback`  -   发送消息的回调
             `isredirect` -   是否是重定向
         """
-        request = self.http_stream.make_get_request(url)
         _url_info = partial(self._url_info, callback = callback, url = url,
                             isredirect = isredirect)
         _eurl_info = partial(self._eurl_info, callback = callback, url = url)
-        self.http_stream.add_request(request, _url_info, _eurl_info)
+        self.http_stream.get(url, readback = _url_info, errorback = _eurl_info)
 
 
     def _url_info(self, resp, callback, url, isredirect = False):
@@ -114,9 +124,8 @@ class Command(object):
         #url = "http://localhost:8080/run"
         params = [("code", code.encode("utf-8"))]
 
-        request = self.http_stream.make_post_request(url, params)
         read_py = partial(self.read_py, callback = callback)
-        self.http_stream.add_request(request, read_py)
+        self.http_stream.post(url, params, readback = read_py)
 
     def read_py(self, resp, callback):
         """ 读取执行Python代码的返回 """
@@ -130,6 +139,7 @@ class Command(object):
                 content = u"ERR: " + result.get("err")
 
         except ValueError:
+            logging.warn(traceback.format_exc())
             content = u"我出错了, 没办法执行, 我正在改"
         callback(content)
 
@@ -149,7 +159,6 @@ class Command(object):
             #url = "http://localhost:8080/shell"
             params = [("session", session),
                     ("statement", statement.encode("utf-8"))]
-        request = self.http_stream.make_get_request(url, params)
 
         def read_shell(resp, callback):
             data = resp.read()
@@ -157,8 +166,8 @@ class Command(object):
                 data = "OK"
             callback(data.decode("utf-8"))
             return
-        self.http_stream.add_request(request,
-                                     partial(read_shell, callback = callback))
+        read_back = partial(read_shell, callback = callback)
+        self.http_stream.get(url, params, readback = read_back)
 
 
     def paste(self, code, callback, typ = "text"):
@@ -166,10 +175,8 @@ class Command(object):
         url = "http://paste.linuxzen.com"
         params = [("class", typ), ("code", code.encode("utf-8")), ("paste", "ff")]
 
-        request = self.http_stream.make_post_request(url, params)
         read_back = partial(self.read_paste, oldurl = url, callback = callback)
-
-        self.http_stream.add_request(request, read_back)
+        self.http_stream.post(url, params, readback = read_back)
 
 
     def read_paste(self, resp, oldurl, callback):
@@ -186,18 +193,16 @@ class Command(object):
     def teach(self, say, response):
         url = "http://paste.linuxzen.com/bot/teach"
         params = (("say", say.encode("utf-8")), ("res", response.encode("utf-8")))
-        req = self.http_stream.make_get_request(url, params)
         logging.info(u"Teach our bot {0}/{1}".format(say, response))
-        self.http_stream.add_request(req)
+        self.http_stream.get(url, params)
 
 
     def simsimi(self, content, callback):
         """ simsimi 小黄鸡 """
         msg_url = "http://www.simsimi.com/func/req"
         msg_params = (("msg", content.encode("utf-8")), ("lc", "ch"))
-        request = self.http_stream.make_get_request(msg_url, msg_params)
-        request.add_header("Referer", "http://www.simsimi.com/talk.htm?lc=ch")
-        request.add_header("X-Requested-With", "XMLHttpRequest")
+        headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch",
+                   "X-Requested-With": "XMLHttpRequest"}
 
         def read_simsimi(resp):
             result = resp.read()
@@ -205,6 +210,10 @@ class Command(object):
                 try:
                     response = json.loads(result)
                     res = response.get("response")
+
+                    if is_black_msg(res):
+                        return self.simsimi(content, callback)
+
                     if not res or (res and res.startswith("Unauthorized access!.")):
                         if not self._sim_try.has_key(content):
                             self._sim_try[content] = 0
@@ -221,13 +230,15 @@ class Command(object):
                         callback(res)
                         self.teach(content, res)
                 except ValueError:
+                    logging.warn(traceback.format_exc())
                     logging.warn("SimSimi error with response {0}".format(result))
                     self.simsimi(content, callback)
 
+        kw = {"headers":headers, "readback":read_simsimi}
         if SimSimi_Proxy:
-            self.http_stream.add_request(request, read_simsimi, proxy=SimSimi_Proxy)
-        else:
-            self.http_stream.add_request(request, read_simsimi)
+            kw.update(proxy=SimSimi_Proxy)
+
+        self.http_stream.get(msg_url, msg_params, **kw)
 
 
     def cetr(self, source, callback,  web = False):
@@ -239,9 +250,8 @@ class Command(object):
         params = [("keyfrom", keyfrom), ("key", key),("type", "data"),
                   ("doctype", "json"), ("version",1.1), ("q", source)]
 
-        request = self.http_stream.make_get_request(url, params)
         read_back = partial(self.read_cetr, callback = callback, web = web)
-        self.http_stream.add_request(request, read_back)
+        self.http_stream.get(url, params, readback =read_back)
 
 
     def read_cetr(self, resp, callback, web):
@@ -253,11 +263,13 @@ class Command(object):
             with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
                 data = gf.read()
         except:
+            logging.warn(traceback.format_exc())
             data = source
 
         try:
             result = json.loads(data)
         except ValueError:
+            logging.warn(traceback.format_exc())
             body = u"error"
         else:
             errorCode = result.get("errorCode")
