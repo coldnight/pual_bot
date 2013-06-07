@@ -50,8 +50,8 @@ def upload_file(filename, path):
     req.add_data(str(form))
     return urllib2.urlopen(req)
 
-black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员",
-               u"技巧", u"必看", u"必学", u"加我", u"搜索"]
+black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员", u"功能", u"体验",
+               u"技巧", u"必看", u"必学", u"加我", u"搜索", u"新型"]
 
 def is_black_msg(content):
     coe = 0
