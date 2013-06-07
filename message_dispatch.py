@@ -172,6 +172,11 @@ class MessageDispatch(object):
             return
 
         if typ == "b":
+            if content.startswith(u"设置签名:") and content.count("|") == 1:
+                password, signature = content.strip(u"设置签名:").split("|")
+                self.webqq.set_signature(signature, password, send_msg)
+                return
+
             if content:
                 self.cmd.simsimi(content, send_msg)
             else:

@@ -37,7 +37,7 @@ from datetime import datetime
 from http_stream import HTTPStream
 from message_dispatch import MessageDispatch
 from command import upload_file
-from config import UPLOAD_CHECKIMG
+from config import UPLOAD_CHECKIMG, Set_Password
 try:
     from config import DEBUG
 except ImportError:
@@ -632,6 +632,42 @@ class WebQQ(object):
         self.last_group_msg_time = time.time()
         if self.last_msg_numbers > 0:
             self.last_msg_numbers -= 1
+
+
+    def set_signature(self, signature, password, callback):
+        """ 设置QQ签名,
+        可以通过发送好友消息设置签名, 消息应按照如下格式:
+            设置签名:[密码]|[签名内容]    // 密码和签名内容不能包含分割符
+        url: http://s.web2.qq.com/api/set_long_nick2
+        method: POST
+        params:
+                r : {
+                    nlk         // 签名内容
+                    vfwebqq     // 登录时获取的cookie值
+                }
+        headers:
+            Referer:http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1
+        """
+        if password != Set_Password:
+            return callback(u"你没有权限这么做")
+
+        logging.info(u"Set signature {0}".format(signature))
+
+        url = "http://s.web2.qq.com/api/set_long_nick2"
+        params = (("r", json.dumps({"nlk":signature, "vfwebqq":self.vfwebqq})),)
+        headers = {"Referer":
+                "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1",
+                "Origin":"http://s.web2.qq.com"}
+
+        def readback(resp):
+            data = resp.read()
+            print data
+            result = json.loads(data).get("retcode")
+            if result == 0:
+                callback(u"设置成功")
+            else:
+                callback(u"设置失败")
+        self.http_stream.post(url, params, headers = headers, readback = readback)
 
 
     def run(self):
