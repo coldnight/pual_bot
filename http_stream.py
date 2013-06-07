@@ -358,7 +358,7 @@ class HTTPStream(object):
                     if self.timeout_retry.has_key(request):
                         self.timeout_retry[request] += 1
                     else:
-                        self.timeout_retry = 1
+                        self.timeout_retry[request] = 1
                     self.add_request(request, readback, errorback, proxy)
                 else:
                     self.stop()
