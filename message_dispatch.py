@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding:utf-8 -*-
 #
 # Copyright 2013 cold
 #
@@ -14,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# -*- coding:utf-8 -*-
 #
 #   Author  :   cold
 #   E-mail  :   wh_linux@126.com
@@ -88,7 +88,7 @@ class MessageDispatch(object):
             logging.info(u"Got Group Message {0} from {1}".format(content, gcode))
             pre = u"{0}: ".format(uname)
             callback = partial(self.webqq.send_group_msg, gcode)
-            self.handle_content(uin, content, callback, pre)
+            self.handle_content(uin, content, callback, "g", pre)
 
 
     def handle_qq_message(self, message):
@@ -100,14 +100,16 @@ class MessageDispatch(object):
         if content:
             logging.info(u"Got Friend Message {0} from {1}".format(content, from_uin))
             callback = partial(self.webqq.send_buddy_msg, from_uin)
-            self.handle_content(from_uin, content, callback)
+            self.handle_content(from_uin, content, callback, "b")
 
-    def handle_content(self, from_uin, content, callback, pre = None):
+
+    def handle_content(self, from_uin, content, callback, typ = "g", pre = None):
         """ 处理内容
         Arguments:
             `from_uin`  -       发送者uin
             `content`   -       内容
             `callback`  -       仅仅接受内容参数的回调
+            `typ`       -       消息类型 g 群消息  b 好友消息
             `pre`       -       处理后内容前缀
         """
         send_msg = partial(self.send_msg, callback = callback, nick = pre)
@@ -131,32 +133,26 @@ class MessageDispatch(object):
             self.cmd.paste(code, send_msg, typ)
             return
 
-        if content.strip().lower() == "ping " + self.webqq.nickname.lower():
-            body = u"I am here ^ ^"
+        if typ == "g":
+            nickname = self.webqq.nickname.lower()
+            ping_cmd = "ping " + nickname
+            about_cmd = "about " + nickname
+            uptime_cmd = "uptime " + nickname
+            help_cmd = "help " + nickname
+        else:
+            ping_cmd = "ping"
+            about_cmd = "about"
+            uptime_cmd = "uptime"
+            help_cmd = "help"
+        commands = [ping_cmd, about_cmd, help_cmd, uptime_cmd]
+        command_resp = {ping_cmd:u"I am here ^_^", about_cmd:ABOUT_STR,
+                        help_cmd:HELP_DOC, uptime_cmd : self.webqq.get_uptime()}
+
+        if content.strip().lower() in commands:
+            body = command_resp[content.strip().lower()]
+            if not isinstance(body, (str, unicode)):
+                body = body()
             send_msg(body)
-            return
-
-        if content.strip().lower() == "about " + self.webqq.nickname.lower():
-            body = ABOUT_STR
-            send_msg(body)
-            return
-
-        if content.strip().lower() == "help " + self.webqq.nickname.lower():
-            send_msg(HELP_DOC)
-            return
-
-        if content.strip() == "uptime " + self.webqq.nickname:
-            body = self.webqq.get_uptime()
-            send_msg(body)
-            return
-
-        if content.lower().startswith(self.webqq.nickname.lower()) \
-           or content.lower().endswith(self.webqq.nickname.lower()):
-            content = content.lower().strip(self.webqq.nickname.lower()).strip()
-            if content:
-                self.cmd.simsimi(content, send_msg)
-            else:
-                send_msg(u"你总的说点什么吧")
             return
 
         if content.startswith("-tr"):
@@ -173,6 +169,25 @@ class MessageDispatch(object):
         if content.startswith(">>>"):
             body = content.lstrip(">").lstrip(" ")
             self.cmd.shell(from_uin, body, send_msg)
+            return
+
+        if typ == "b":
+            if content:
+                self.cmd.simsimi(content, send_msg)
+            else:
+                send_msg(u"你总的说点什么吧")
+            return
+
+        if content.lower().startswith(self.webqq.nickname.lower()) \
+           or content.lower().endswith(self.webqq.nickname.lower()):
+            content = content.lower().strip(self.webqq.nickname.lower()).strip()
+            if content:
+                self.cmd.simsimi(content, send_msg)
+            else:
+                send_msg(u"你总的说点什么吧")
+            return
+
+
 
 
         if u"提问的智慧" in content:
