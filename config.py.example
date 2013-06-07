@@ -45,4 +45,4 @@ UPLOAD_CHECKIMG = False
 SimSimi_Proxy = ("host", "port")
 
 # 需要改动QQ某些东西, 比如设置签名, 所要提供的密码
-Set_Password = "yourpassword"
+Set_Password = "set_password"
