@@ -180,7 +180,7 @@ class MessageDispatch(object):
                 return
 
             if content:
-                self.cmd.simsimi(content, send_msg)
+                self.cmd.talk(content, send_msg)
             else:
                 send_msg(u"你总的说点什么吧")
             return
@@ -189,7 +189,7 @@ class MessageDispatch(object):
            or content.lower().endswith(self.webqq.nickname.lower()):
             content = content.lower().strip(self.webqq.nickname.lower()).strip()
             if content:
-                self.cmd.simsimi(content, send_msg)
+                self.cmd.talk(content, send_msg)
             else:
                 send_msg(u"你总的说点什么吧")
             return

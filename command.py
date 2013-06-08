@@ -211,6 +211,19 @@ class Command(object):
         logging.info(u"Teach our bot {0}/{1}".format(say, response))
         self.http_stream.get(url, params)
 
+    def talk(self, say, callback):
+        url = "http://paste.linuxzen.com/bot/talk"
+        params = (("say", say.encode("utf-8")),)
+
+        def readback(resp):
+            data = resp.read()
+            r = json.loads(data)
+            if r.get("status"):
+                callback(r.get("response"))
+            else:
+                self.simsimi(say, callback)
+
+        self.http_stream.get(url, params, readback = readback)
 
     def simsimi(self, content, callback):
         """ simsimi 小黄鸡 """
