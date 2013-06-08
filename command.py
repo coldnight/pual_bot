@@ -247,7 +247,8 @@ class Command(object):
                 except ValueError:
                     logging.warn(traceback.format_exc())
                     logging.warn("SimSimi error with response {0}".format(result))
-                    self.simsimi(content, callback)
+                    #self.simsimi(content, callback)
+                    callback(u"呵呵")
 
         kw = {"headers":headers, "readback":read_simsimi}
         if SimSimi_Proxy:
