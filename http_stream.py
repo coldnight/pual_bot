@@ -352,7 +352,7 @@ class HTTPStream(object):
             else:
                 if not self.timeout_retry.has_key(request) or\
                    self.timeout_retry[request] < 5:
-                    logging.warn("Retry...")
+                    logging.warn("Retry {0}".format(request.get_full_url()))
                     if self.timeout_retry.has_key(request):
                         self.timeout_retry[request] += 1
                     else:

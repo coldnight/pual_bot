@@ -50,4 +50,8 @@ easy_install tornado lxml
 * 修复好友消息互动和命令不用加机器人昵称前缀或后缀
 * 支持设置签名:通过发送好友消息:`设置签名:[密码]|[签名内容]` 密码和签名内容不能包含分割符 `|`, 密码配置参见`config.py.example`
 
+## 2013-06-08
+* 修复消息间隔引起的不合理延迟
+* 支持临时消息
+
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业

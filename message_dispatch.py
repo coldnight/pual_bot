@@ -91,15 +91,17 @@ class MessageDispatch(object):
             self.handle_content(uin, content, callback, "g", pre)
 
 
-    def handle_qq_message(self, message):
+    def handle_qq_message(self, message, is_sess = False):
         """ 处理QQ好友消息 """
         value = message.get("value", {})
         from_uin = value.get("from_uin")
         contents = value.get("content", [])
         content = self.handle_qq_msg_contents(contents)
         if content:
-            logging.info(u"Got Friend Message {0} from {1}".format(content, from_uin))
-            callback = partial(self.webqq.send_buddy_msg, from_uin)
+            typ = "Sess" if is_sess else "Friend"
+            logging.info(u"Got {0} Message {1} from {2}".format(typ, content, from_uin))
+            callback = self.webqq.send_sess_msg if is_sess else self.webqq.send_buddy_msg
+            callback = partial(callback, from_uin)
             self.handle_content(from_uin, content, callback, "b")
 
 
@@ -228,3 +230,5 @@ class MessageDispatch(object):
                     self.handle_qq_message(m)
                 if m.get("poll_type") == "kick_message":
                     self.webqq.stop()
+                if m.get("poll_type") == "sess_message":
+                    self.handle_qq_message(m, True)
