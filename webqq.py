@@ -549,8 +549,12 @@ class WebQQ(object):
 
         def readback(resp):
             data = resp.read()
-            result = json.loads(data).get("result", {})
+            r = json.loads(data)
+            result = r.get("result")
             group_sig = result.get("value")
+            if r.get("retcode") != 0:
+                logging.warn(u"Error sess message {0}".format(group_sig))
+                return
             logging.info("Fetch group sig {0} for {1}".format(group_sig, to_uin))
             self.group_sig[to_uin] = group_sig
             callback()
