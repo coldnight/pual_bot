@@ -434,8 +434,11 @@ class WebQQ(object):
             group_name = card.get("card")
             self.group_members_info[gcode][uin]["nick"] = group_name
 
-        if last and not self.poll_and_heart:
+        if last:
             logging.info("Fetch group's members done")
+
+        if last and not self.poll_and_heart:
+            logging.info("Everything is ready, start to poll message")
             self.poll()
             self.heartbeat(0)
 
@@ -459,8 +462,6 @@ class WebQQ(object):
         头部:
             "Referer": "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2"
         """
-        logging.info("Everything is ready, start to poll message")
-
         if not self.poll_and_heart:
             self.poll_and_heart = True
         url = "http://d.web2.qq.com/channel/poll2"
