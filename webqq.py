@@ -39,6 +39,11 @@ from message_dispatch import MessageDispatch
 from command import upload_file
 from config import UPLOAD_CHECKIMG, Set_Password
 try:
+    from config import MESSAGE_INTERVAL
+except ImportError:
+    MESSAGE_INTERVAL = 0.5
+
+try:
     from config import DEBUG
 except ImportError:
     DEBUG = True
@@ -564,9 +569,9 @@ class WebQQ(object):
         headers = {"Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3",
                    "Origin": "http://d.web2.qq.com"}
-        delay = self.get_delay(content)
+        delay, n = self.get_delay(content)
         def readback(resp):
-            self.last_msg_numbers -= 1
+            self.last_msg_numbers -= n
 
         self.http_stream.post(url, params, headers = headers, delay = delay,
                               readback = readback)
@@ -603,35 +608,40 @@ class WebQQ(object):
 
         headers = {"Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"}
-        callback = partial(self.send_group_msg_back, source, group_uin)
+        delay, n = self.get_delay(content)
+        callback = partial(self.send_group_msg_back, source, group_uin, n)
 
-        delay = self.get_delay(content)
 
         self.http_stream.post(url, params, headers = headers, readback = callback,
                               delay = delay)
 
 
     def get_delay(self, content):
+        MIN = MESSAGE_INTERVAL
         delay = 0
 
-        if time.time() - self.last_group_msg_time < 0.5 or\
+        if time.time() - self.last_group_msg_time < MIN or\
            self.last_msg_numbers > 0:
-            delay = self.last_msg_numbers * 0.5
+            delay = self.last_msg_numbers * MIN
 
+        numbers = 1
         if self.last_msg_content == content:
             delay += 0.5
             self.last_msg_numbers += 1
-
+            numbers = 2
         self.last_msg_numbers += 1
         self.last_msg_content = content
-        return delay
+        if delay:
+            logging.info(u"Has {0} message(s) not send,this message will send"
+                     " {0} second(s) after".format(delay, self.last_msg_numbers))
+        return delay, numbers
 
 
-    def send_group_msg_back(self, content, group_uin, resp):
+    def send_group_msg_back(self, content, group_uin, n, resp):
         logging.info(u"Send group message {0} to {1}".format(content, group_uin))
         self.last_group_msg_time = time.time()
         if self.last_msg_numbers > 0:
-            self.last_msg_numbers -= 1
+            self.last_msg_numbers -= n
 
 
     def set_signature(self, signature, password, callback):
