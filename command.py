@@ -44,7 +44,9 @@ def upload_file(filename, path):
     filename = filename.encode("utf-8")
     form.add_file(fieldname='img', filename=filename,
                     fileHandle=open(path))
-    req = urllib2.Request("http://paste.linuxzen.com")
+    #img_host = "http://paste.linuxzen.com"
+    img_host = "http://localhost:8800"
+    req = urllib2.Request(img_host)
     req.add_header("Content-Type", form.get_content_type())
     req.add_header("Content-Length", len(str(form)))
     req.add_data(str(form))

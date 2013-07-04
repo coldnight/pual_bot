@@ -555,7 +555,10 @@ class WebQQ(object):
             if r.get("retcode") != 0:
                 logging.warn(u"Error sess message {0}".format(group_sig))
                 return
-            logging.info("Fetch group sig {0} for {1}".format(group_sig, to_uin))
+            try:
+                logging.info("Fetch group sig {0} for {1}".format(group_sig, to_uin))
+            except UnicodeError:
+                return
             self.group_sig[to_uin] = group_sig
             callback()
 
