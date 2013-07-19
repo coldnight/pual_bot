@@ -772,7 +772,8 @@ if __name__ == "__main__":
         if pid > 0:
             print "Main process wait child exit with pid", pid
             os.waitpid(pid, 0)
-            fork_main()
+            import sys
+            os.execv(sys.executable, [sys.executable] + sys.argv)
         else:
             print "Child process run webqq with pid", pid
             webqq = WebQQ(QQ, QQ_PWD)
