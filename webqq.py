@@ -767,24 +767,20 @@ class WebQQ(object):
 if __name__ == "__main__":
     from config import QQ, QQ_PWD
 
-    def fork_main():
-        pid = os.fork()
-        if pid > 0:
-            print "Main process wait child exit with pid", pid
-            os.waitpid(pid, 0)
-            import sys
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        else:
-            print "Child process run webqq with pid", pid
-            webqq = WebQQ(QQ, QQ_PWD)
+    def main():
+        import sys
+        webqq = WebQQ(QQ, QQ_PWD)
+        retry = True
+        try:
             webqq.run()
+        except KeyboardInterrupt:
+            retry = False
+            print >>sys.stderr, "Exiting..."
+        except:
+            retry = True
+            traceback.print_exc()
+        finally:
+            if retry:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    def non_fork_main():
-        while True:
-            webqq = WebQQ(QQ, QQ_PWD)
-            webqq.run()
-
-    if hasattr(os, "fork"):
-        fork_main()
-    else:
-        non_fork_main()
+    main()
