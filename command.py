@@ -78,8 +78,7 @@ class Command(object):
         """
         _url_info = partial(self._url_info, callback = callback, url = url,
                             isredirect = isredirect)
-        _eurl_info = partial(self._eurl_info, callback = callback, url = url)
-        self.http.get(url, callback = _url_info, errorback = _eurl_info)
+        self.http.get(url, callback = _url_info)
 
 
     def _url_info(self, resp, callback, url, isredirect = False):
@@ -287,8 +286,7 @@ class Command(object):
 
     def read_cetr(self, resp, callback, web):
         """ 读取英汉翻译的结果 """
-        source = resp.body
-        body = None
+        """
         try:
             buf = StringIO(source)
             with gzip.GzipFile(mode = "rb", fileobj = buf) as gf:
@@ -296,9 +294,10 @@ class Command(object):
         except:
             logging.warn(traceback.format_exc())
             data = source
+        """
 
         try:
-            result = json.loads(data)
+            result = json.loads(resp.body)
         except ValueError:
             logging.warn(traceback.format_exc())
             body = u"error"

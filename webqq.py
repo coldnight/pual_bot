@@ -63,7 +63,7 @@ class WebQQ(object):
         self.nickname = None         # 初始化QQ昵称
         self.http = TornadoHTTPClient()
         self.http.set_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/28.0.1500.71 Chrome/28.0.1500.71 Safari/537.36")
-        self.http.debug = True
+        self.http.debug = DEBUG
         self.http.validate_cert = False
         self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
         self.msg_dispatch = MessageDispatch(self)
@@ -203,8 +203,6 @@ class WebQQ(object):
                    "in=1&login_state=10&t=20130723001"}
         self.http.get(url, params, headers = headers, callback = self.handle_verify)
 
-        """
-        # 获取SimSimi的cookie
         cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
         cookie_params = (("lc", "ch"),)
         headers = {"Referer": "http://www.simsimi.com/talk.htm"}
@@ -213,7 +211,6 @@ class WebQQ(object):
         headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
         self.http.get("http://www.simsimi.com/func/langInfo",
                              cookie_params, headers = headers)
-        """
 
 
     def handle_pwd(self, r, vcode, huin):
