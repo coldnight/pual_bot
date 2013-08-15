@@ -116,7 +116,6 @@ class MessageDispatch(object):
         """
         send_msg = partial(self.send_msg, callback = callback, nick = pre)
         content = content.strip()
-        content = content.encode('utf-8')
 
         urls = URL_RE.findall(content)
         if urls:
@@ -151,7 +150,7 @@ class MessageDispatch(object):
         command_resp = {ping_cmd:u"I am here ^_^", about_cmd:ABOUT_STR,
                         help_cmd:HELP_DOC, uptime_cmd : self.webqq.get_uptime()}
 
-        if content.strip().lower() in commands:
+        if content.encode("utf-8").strip().lower() in commands:
             body = command_resp[content.strip().lower()]
             if not isinstance(body, (str, unicode)):
                 body = body()
@@ -186,9 +185,10 @@ class MessageDispatch(object):
                 send_msg(u"你总的说点什么吧")
             return
 
-        if content.lower().startswith(self.webqq.nickname.lower()) \
-           or content.lower().endswith(self.webqq.nickname.lower()):
-            content = content.lower().strip(self.webqq.nickname.lower()).strip()
+        nickname = self.webqq.nickname.decode('utf-8').lower()
+        if content.lower().startswith(nickname) \
+           or content.lower().endswith(nickname):
+            content = content.lower().strip(nickname).strip()
             if content:
                 self.cmd.talk(content, send_msg)
             else:
