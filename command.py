@@ -32,7 +32,7 @@ from functools import partial
 from cStringIO import StringIO
 from lxml import etree
 
-from http_stream import HTTPStream, Form
+from tornadohttpclient import TornadoHTTPClient, UploadForm as Form
 from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH, SimSimi_Proxy
 
 
@@ -65,7 +65,7 @@ def is_black_msg(content):
         return True
 
 class Command(object):
-    http_stream = HTTPStream.instance()
+    http = TornadoHTTPClient()
     _sim_try = {}
     simsimi_proxy = False
 
@@ -79,7 +79,7 @@ class Command(object):
         _url_info = partial(self._url_info, callback = callback, url = url,
                             isredirect = isredirect)
         _eurl_info = partial(self._eurl_info, callback = callback, url = url)
-        self.http_stream.get(url, readback = _url_info, errorback = _eurl_info)
+        self.http.get(url, callback = _url_info, errorback = _eurl_info)
 
 
     def _url_info(self, resp, callback, url, isredirect = False):
@@ -89,7 +89,7 @@ class Command(object):
                                   ')"?\s*/?>|<meta\s+charset="?([^">/"]+'
                                   ')"?\s*/?>', re.IGNORECASE)
         body = ""
-        content = resp.read()
+        content = resp.body
         c_type =  resp.headers.get("Context-Type", "text/html")
         if resp.code in [200]:
             if c_type == "text/html":
@@ -142,11 +142,11 @@ class Command(object):
         params = [("code", code.encode("utf-8"))]
 
         read_py = partial(self.read_py, callback = callback)
-        self.http_stream.post(url, params, readback = read_py)
+        self.http.post(url, params, callback = read_py)
 
     def read_py(self, resp, callback):
         """ 读取执行Python代码的返回 """
-        data = resp.read()
+        data = resp.body
         try:
             result = json.loads(data)
             status = result.get("status")
@@ -178,13 +178,13 @@ class Command(object):
                     ("statement", statement.encode("utf-8"))]
 
         def read_shell(resp, callback):
-            data = resp.read()
+            data = resp.body
             if not data:
                 data = "OK"
             callback(data.decode("utf-8"))
             return
-        read_back = partial(read_shell, callback = callback)
-        self.http_stream.get(url, params, readback = read_back)
+        callback = partial(read_shell, callback = callback)
+        self.http.get(url, params, callback = callback)
 
 
     def paste(self, code, callback, typ = "text"):
@@ -192,8 +192,8 @@ class Command(object):
         url = "http://paste.linuxzen.com"
         params = [("class", typ), ("code", code.encode("utf-8")), ("paste", "ff")]
 
-        read_back = partial(self.read_paste, oldurl = url, callback = callback)
-        self.http_stream.post(url, params, readback = read_back)
+        callback = partial(self.read_paste, oldurl = url, callback = callback)
+        self.http.post(url, params, callback = callback)
 
 
     def read_paste(self, resp, oldurl, callback):
@@ -201,7 +201,7 @@ class Command(object):
         if resp.code == 302:
             url = resp.headers.get("Location")
         else:
-            url = resp.url
+            url = resp.effective_url
         if url != oldurl:
             content = url
             callback(content)
@@ -211,21 +211,21 @@ class Command(object):
         url = "http://paste.linuxzen.com/bot/teach"
         params = (("say", say.encode("utf-8")), ("res", response.encode("utf-8")))
         logging.info(u"Teach our bot {0}/{1}".format(say, response))
-        self.http_stream.get(url, params)
+        self.http.get(url, params)
 
     def talk(self, say, callback):
         url = "http://paste.linuxzen.com/bot/talk"
         params = (("say", say.encode("utf-8")),)
 
-        def readback(resp):
-            data = resp.read()
+        def callback(resp):
+            data = resp.body
             r = json.loads(data)
             if r.get("status"):
                 callback(r.get("response"))
             else:
                 self.simsimi(say, callback)
 
-        self.http_stream.get(url, params, readback = readback)
+        self.http.get(url, params, callback = callback)
 
     def simsimi(self, content, callback):
         """ simsimi 小黄鸡 """
@@ -235,7 +235,7 @@ class Command(object):
                    "X-Requested-With": "XMLHttpRequest"}
 
         def read_simsimi(resp):
-            result = resp.read()
+            result = resp.body
             if result:
                 try:
                     response = json.loads(result)
@@ -265,11 +265,11 @@ class Command(object):
                     #self.simsimi(content, callback)
                     callback(u"呵呵")
 
-        kw = {"headers":headers, "readback":read_simsimi}
+        kw = {"headers":headers, "callback":read_simsimi}
         if SimSimi_Proxy:
             kw.update(proxy=SimSimi_Proxy)
 
-        self.http_stream.get(msg_url, msg_params, **kw)
+        self.http.get(msg_url, msg_params, **kw)
 
 
     def cetr(self, source, callback,  web = False):
@@ -281,13 +281,13 @@ class Command(object):
         params = [("keyfrom", keyfrom), ("key", key),("type", "data"),
                   ("doctype", "json"), ("version",1.1), ("q", source)]
 
-        read_back = partial(self.read_cetr, callback = callback, web = web)
-        self.http_stream.get(url, params, readback =read_back)
+        callback = partial(self.read_cetr, callback = callback, web = web)
+        self.http.get(url, params, callback =callback)
 
 
     def read_cetr(self, resp, callback, web):
         """ 读取英汉翻译的结果 """
-        source = resp.read()
+        source = resp.body
         body = None
         try:
             buf = StringIO(source)
