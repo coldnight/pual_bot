@@ -22,19 +22,20 @@
 #   Desc    :   WebQQ
 #
 
+import re
 import os
 import time
 import json
 import random
 import logging
-import urllib2
 import traceback
 
 from hashlib import md5
 from functools import partial
 from datetime import datetime
 
-from http_stream import HTTPStream
+#from httpclient import TornadoHTTPClient
+from tornadohttpclient import TornadoHTTPClient
 from message_dispatch import MessageDispatch
 from command import upload_file
 from config import UPLOAD_CHECKIMG, Set_Password
@@ -52,14 +53,22 @@ except ImportError:
 logging.basicConfig(level = logging.DEBUG if DEBUG else logging.INFO,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
 
+SIG_RE = re.compile(r'var g_login_sig=encodeURIComponent\("(.*?)"\);')
+
 
 class WebQQ(object):
     def __init__(self, qid, pwd):
         self.qid = qid               # QQ 号
         self.__pwd = pwd             # QQ密码
         self.nickname = None         # 初始化QQ昵称
-        self.http_stream = HTTPStream.instance()       # HTTP 流
+        self.http = TornadoHTTPClient()
+        self.http.set_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/28.0.1500.71 Chrome/28.0.1500.71 Safari/537.36")
+        self.http.debug = True
+        self.http.validate_cert = False
+        self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
         self.msg_dispatch = MessageDispatch(self)
+
+        self.rc = random.randrange(0, 100)
 
         self.aid = 1003903                                    # aid 固定
         self.clientid = random.randrange(11111111, 99999999)  # 客户端id 随机固定
@@ -70,7 +79,6 @@ class WebQQ(object):
 
         # 初始化WebQQ登录期间需要保存的数据
         self.check_code = None
-        self.skey = None
         self.ptwebqq = None
 
         self.check_data = None       # 初始化检查时返回的数据
@@ -82,63 +90,26 @@ class WebQQ(object):
         self.group_members_info = {} # 初始化组成员列表
 
         self.hb_time = int(time.time() * 1000)
+        self.daid = 164
+        self.login_sig = None
 
         self.login_time = None       # 登录的时间
         self.last_group_msg_time = time.time()
         self.last_msg_content = None
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
-        self.base_header = {"Referer":"http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"}
-
-
-    def handle_pwd(self, password):
-        """ 根据检查返回结果,调用回调生成密码和保存验证码 """
-        r, self._vcode, huin = eval("self." + self.check_data.rstrip(";"))
-        pwd = md5(md5(password).digest() + huin).hexdigest().upper()
-        return md5(pwd + self._vcode).hexdigest().upper()
-
-    def ptui_checkVC(self, r, vcode, uin):
-        """ 处理检查的回调 返回三个值 """
-        if int(r) == 0:
-            logging.info("Has checked, don't need verification code ")
-            self.check_code = vcode
-        else:
-            logging.warn("Has checked, need a verification code")
-            self.check_code = self.get_check_img(vcode)
-            self.require_check = True
-        return r, self.check_code, uin
-
-    def get_check_img(self, vcode):
-        """ 获取验证图片 """
-        url = "https://ssl.captcha.qq.com/getimage"
-        params = [("aid", self.aid), ("r", random.random()),
-                  ("uin", self.qid)]
-        request = self.http_stream.make_get_request(url, params)
-        cookie = urllib2.HTTPCookieProcessor(self.http_stream.cookiejar)
-        opener = urllib2.build_opener(cookie)
-        res = opener.open(request)
-        path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                            "check.jpg")
-        fp = open(path, 'wb')
-        fp.write(res.read())
-        fp.close()
-        if UPLOAD_CHECKIMG:
-            res = upload_file("check.jpg", path)
-            path = res.url
-        print u"验证图片: {0}".format(path)
-        check_code = ""
-        while not check_code:
-            check_code = raw_input("输入验证图片上的验证码: ")
-        return check_code.strip().upper()
+        self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
 
 
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
         """ 模拟JS登录之前的回调, 保存昵称 """
         if int(scode) == 0:
-            logging.info("Get the value of ptwebqq from cookie")
-            self.skey = self.http_stream.cookie['.qq.com']['/']['skey'].value
-            self.ptwebqq = self.http_stream.cookie['.qq.com']['/']['ptwebqq'].value
+            logging.info("从Cookie中获取ptwebqq的值")
+            self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
+            self.logined = True
         else:
-            logging.warn("There is no value of ptwebqq in cookie")
+            logging.error(u"server response: {0}".format(msg.decode('utf-8')))
+            exit(2)
+
         if nickname:
             self.nickname = nickname
 
@@ -177,39 +148,123 @@ class WebQQ(object):
 
         return "{0} up {1} {2}".format(up_time, num, unit)
 
-    def check(self, **kwargs):
+
+    def get_login_sig(self):
+        logging.info("获取 login_sig...")
+        url = "https://ui.ptlogin2.qq.com/cgi-bin/login"
+        params = [("daid", self.daid), ("target", "self"), ("style", 5),
+                  ("mibao_css", "m_webqq"), ("appid", self.aid),
+                  ("enable_qlogin", 0), ("no_verifyimg", 1),
+                  ("s_url", "http://web2.qq.com/loginproxy.html"),
+                  ("f_url", "loginerroralert"),
+                  ("strong_login", 1), ("login_state", 10),
+                  ("t", "20130723001")]
+        self.http.get(url, params, callback = self.check)
+        self.http.get("http://web2.qq.com")
+
+
+    def check(self, resp):
         """ 检查是否需要验证码
         url :
-            http://check.ptlogin2.qq.com/check
+            https://ssl.ptlogin2.qq.com/check
         方法:   GET
         参数:
             {
                 uin     // qq号
                 appid   // 程序id 固定为1003903
                 r       // 随机数
+                u1      // http://web2.qq.com/loginproxy.html
+                js_ver  // 10040
+                js_type // 0
             }
         返回:
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
-        logging.info("Check whether need verification code ")
+        sigs = SIG_RE.findall(resp.body)
+        if len(sigs) == 1:
+            self.login_sig = sigs[0]
+            logging.info(u"获取Login Sig: {0}".format(self.login_sig))
+        else:
+            logging.warn(u"没有获取到 Login Sig, 后续操作可能失败")
+            self.login_sig = ""
+
+        logging.info(u"检查是否需要验证码...")
+        #url = "https://ssl.ptlogin2.qq.com/check"
         url = "http://check.ptlogin2.qq.com/check"
         params = {"uin":self.qid, "appid":self.aid,
-                  "r" : random.random()}
-        self.http_stream.get(url, params, readback = self.before_login)
+                  "u1": "http://web2.qq.com/loginproxy.html",
+                  "login_sig":self.login_sig, "js_ver":10040,
+                  "js_type":0, "r" : random.random()}
+        headers = {"Referer":"https://ui.ptlogin2.qq.com/cgi-bin/login?daid="
+                   "164&target=self&style=5&mibao_css=m_webqq&appid=1003903&"
+                   "enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fweb2.q"
+                   "q.com%2Floginproxy.html&f_url=loginerroralert&strong_log"
+                   "in=1&login_state=10&t=20130723001"}
+        self.http.get(url, params, headers = headers, callback = self.handle_verify)
 
+        """
         # 获取SimSimi的cookie
         cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
         cookie_params = (("lc", "ch"),)
         headers = {"Referer": "http://www.simsimi.com/talk.htm"}
-        self.http_stream.get(cookie_url, cookie_params, headers = headers)
+        self.http.get(cookie_url, cookie_params, headers = headers)
 
         headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
-        self.http_stream.get("http://www.simsimi.com/func/langInfo",
+        self.http.get("http://www.simsimi.com/func/langInfo",
                              cookie_params, headers = headers)
+        """
 
 
-    def before_login(self, resp):
+    def handle_pwd(self, r, vcode, huin):
+        """ 根据检查返回结果,调用回调生成密码和保存验证码 """
+        pwd = md5(md5(self.__pwd).digest() + huin).hexdigest().upper()
+        pwd = md5(pwd + vcode).hexdigest().upper()
+        return pwd
+
+
+    def get_check_img(self, r, vcode, uin):
+        """ 获取验证图片 """
+
+        def callback(resp):
+            path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
+                                                "check.jpg")
+            fp = open(path, 'wb')
+            fp.write(resp.body)
+            fp.close()
+            if UPLOAD_CHECKIMG:
+                res = upload_file("check.jpg", path)
+                path = res.url
+            print u"验证图片: {0}".format(path)
+            check_code = ""
+            while not check_code:
+                check_code = raw_input("输入验证图片上的验证码: ")
+            ccode = check_code.strip().lower()
+            self.check_code = ccode
+            pwd = self.handle_pwd(r, ccode.upper(), uin)
+            self.before_login(pwd)
+
+        url = "https://ssl.captcha.qq.com/getimage"
+        params = [("aid", self.aid), ("r", random.random()),
+                ("uin", self.qid)]
+        self.http.get(url, params, callback = callback)
+
+
+    def handle_verify(self, resp):
+        ptui_checkVC = lambda r, v, u: (r, v, u)
+        r, vcode, uin = eval(resp.body.strip().rstrip(";"))
+        if int(r) == 0:
+            logging.info("验证码检查完毕, 不需要验证码")
+            password = self.handle_pwd(r, vcode, uin)
+            self.before_login(password)
+            self.check_code = vcode
+        else:
+            logging.warn("验证码检查完毕, 需要验证码")
+            self.get_check_img(r, vcode, uin)
+            self.require_check = True
+
+
+    def before_login(self, password):
         """ 登录之前的操作
         url:
             https://ssl.ptlogin2.qq.com/login
@@ -243,31 +298,60 @@ class WebQQ(object):
         接口返回:
             ptuiCB('0','0','http://www.qq.com','0','登录成功!', 'nickname');
         先检查是否需要验证码,不需要验证码则首先执行一次登录
-        然后获取Cookie里的ptwebqq,skey保存在实例里,供后面的接口调用
+        然后获取Cookie里的ptwebqq保存在实例里,供后面的接口调用
         """
-        logging.info("Check is done, start to login1")
-        self.check_data = resp.read().strip().rstrip(";")
-        password = self.handle_pwd(self.__pwd)
         url = "https://ssl.ptlogin2.qq.com/login"
         params = [("u",self.qid), ("p",password), ("verifycode", self.check_code),
                   ("webqq_type",10), ("remember_uin", 1),("login2qq",1),
-                  ("aid", self.aid), ("u1", "http://www.qq.com"), ("h", 1),
+                  ("aid", self.aid), ("u1", "http://www.qq.com/loginproxy.h"
+                                      "tml?login2qq=1&webqq_type=10"),
+                  ("h", 1), ("action", 4-5-8246),
                   ("ptredirect", 0), ("ptlang", 2052), ("from_ui", 1),
+                  ("daid", self.daid),
                   ("pttype", 1), ("dumy", ""), ("fp", "loginerroralert"),
                   ("mibao_css","m_webqq"), ("t",1), ("g",1), ("js_type",0),
-                  ("js_ver", 10021)]
-        header = {}
+                  ("js_ver", 10040), ("login_sig", self.login_sig)]
+        headers = {}
         if self.require_check:
-            header = {"Referer":  "https://ui.ptlogin2.qq.com/cgi-"
+            headers.update(Referer =  "https://ui.ptlogin2.qq.com/cgi-"
                             "bin/login?target=self&style=5&mibao_css=m_"
                             "webqq&appid=1003903&enable_qlogin=0&no_ver"
                             "ifyimg=1&s_url=http%3A%2F%2Fweb.qq.com%2Fl"
                             "oginproxy.html&f_url=loginerroralert&stron"
-                            "g_login=1&login_state=10&t=20130221001"}
-        self.http_stream.get(url, params, headers = header, readback = self.login)
+                            "g_login=1&login_state=10&t=20130221001")
+        logging.info("检查完毕, 开始登录前准备")
+        self.http.get(url, params, headers = headers, callback = self.login0)
 
 
-    def login(self, resp):
+    def login0(self, resp):
+        logging.info("login1 done, start to login2")
+        blogin_data = resp.body.decode("utf-8").strip().rstrip(";")
+        eval("self." + blogin_data)
+
+        location1 = re.findall(r'ptuiCB\(\'0\'\,\'0\'\,\'(.*)\'\,\'0\'\,',
+                               blogin_data)[0]
+        params = []
+        header = {"Referer": "https://ui.ptlogin2.qq.com/cgi-bin/login?d"
+                  "aid=164&target=self&style=5&mibao_css=m_webqq&appid=1"
+                  "003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2"
+                  "F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerrorale"
+                  "rt&strong_login=1&login_state=10&t=20130723001"}
+        self.http.get(location1, params, headers = header,
+                             callback = self.get_location1)
+
+    def get_location1(self, resp):
+        if resp.code == 302:
+            location2 = resp.headers.get("Location")
+            params = []
+            header = {}
+            self.http.get(location2, params, headers = header,
+                                 callback = self.get_location1)
+        else:
+            logging.info("get_location1.......................x" + str(resp.code))
+            self.login()
+
+
+    def login(self):
         """ 获取登录前的数据, 并进行登录
         url:
             http://d.web2.qq.com/channel/login2
@@ -298,9 +382,7 @@ class WebQQ(object):
                 u'vfwebqq': u'', u'port': 43332}}
             保存result中的psessionid和vfwebqq供后面接口调用
         """
-        logging.info("login1 done, start to login2")
-        blogin_data = resp.read().decode("utf-8").strip().rstrip(";")
-        eval("self." + blogin_data)
+        time.sleep(4)
 
         url = "http://d.web2.qq.com/channel/login2"
         params = [("r", '{"status":"online","ptwebqq":"%s","passwd_sig":"",'
@@ -312,8 +394,36 @@ class WebQQ(object):
 
         headers = { "Origin": "http://d.web2.qq.com"}
         headers.update(self.base_header)
-        self.http_stream.post(url, params, headers = headers,
-                              readback= self.update_friend)
+        logging.info("登录准备完毕, 开始登录")
+        self.http.post(url, params, headers = headers,
+                              callback= self.update_friend)
+
+    def _hash(self):
+        a = str(self.qid)
+        e = self.ptwebqq
+        l = len(e)
+        # 将qq号码转换成整形列表
+        b, k, d = 0, -1, 0
+        for d in a:
+            d = int(d)
+            b += d
+            b %= l
+            f = 0
+            if b + 4 > l:
+                g = 4 + b - l
+                for h in range(4):
+                    f |= h < g and (
+                        ord(e[b + h]) & 255) << (3 - h) * 8 or (
+                            ord(e[h - g]) & 255) << (3 - h) * 8
+            else:
+                for h in range(4):
+                    f |= (ord(e[b + h]) & 255) << (3 - h) * 8
+            k ^= f
+        c = [k >> 24 & 255, k >> 16 & 255, k >> 8 & 255, k & 255]
+        import string
+        k = list(string.digits) + ['A', 'B', 'C', 'D', 'E', 'F']
+        d = [k[b >> 4 & 15] + k[b & 15] for b in c]
+        return ''.join(d)
 
 
     def update_friend(self, resp, login = True):
@@ -328,23 +438,27 @@ class WebQQ(object):
             Referer:http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1
         """
 
-        data = json.loads(resp.read())
+        data = json.loads(resp.body)
         if login:
+            if data.get("retcode") != 0:
+                logging.error("登录失败")
+                exit(2)
             self.vfwebqq = data.get("result", {}).get("vfwebqq")
             self.psessionid = data.get("result", {}).get("psessionid")
 
 
         url = "http://s.web2.qq.com/api/get_user_friends2"
-        params = [("r", json.dumps({"h":"hello", "vfwebqq":self.vfwebqq}))]
+        params = [("r", json.dumps({"h":"hello", "hash":self._hash(),
+                                    "vfwebqq":self.vfwebqq}))]
         headers = {"Referer":
             "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1"}
 
-        read_back = partial(self.update_friend, login = False)
+        callback = partial(self.update_friend, login = False)
 
         if login:
             logging.info("WebQQ is logged in, start to update friend info")
-            self.http_stream.post(url, params, headers = headers,
-                                  readback = read_back)
+            self.http.post(url, params, headers = headers,
+                                  callback = callback)
         else:
             logging.info("Friend info update")
             lst = data.get("result", {}).get("info", [])
@@ -353,8 +467,8 @@ class WebQQ(object):
                 self.friend_info[uin] = info
             self.update_group()
 
-            self.http_stream.post(url, params, headers = self.base_header,
-                                  delay = 300, readback = read_back)
+            self.http.post(url, params, headers = self.base_header,
+                                  delay = 300, callback = callback)
 
 
     def update_group(self, resp = None):
@@ -377,8 +491,8 @@ class WebQQ(object):
         params = [("r", '{"vfwebqq":"%s"}' % self.vfwebqq),]
         headers = {"Origin": "http://s.web2.qq.com"}
         headers.update(self.base_header)
-        self.http_stream.post(url, params, headers = headers,
-                              readback = self.group_members)
+        self.http.post(url, params, headers = headers,
+                              callback = self.group_members)
 
 
     def group_members(self, resp):
@@ -397,27 +511,30 @@ class WebQQ(object):
         """
         logging.info("Fetch group list done")
         logging.info("Fetch group's members")
-        data = json.loads(resp.read())
+        data = json.loads(resp.body)
         group_list = data.get("result", {}).get("gnamelist", [])
+        if not group_list:
+            self.heartbeat(0)
+            self.poll()
         for i, group in enumerate(group_list):
             gcode = group.get("code")
             url = "http://s.web2.qq.com/api/get_group_info_ext2"
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
                     ("t", int(time.time()))]
-            read_back = self.do_group_members
+            callback = self.do_group_members
             if i == len(group_list) -1 :
-                read_back = partial(read_back, gcode = gcode, last = True)
+                callback = partial(callback, gcode = gcode, last = True)
             else:
-                read_back = partial(read_back, gcode = gcode)
+                callback = partial(callback, gcode = gcode)
 
-            self.http_stream.get(url, params, headers = self.base_header,
-                                 readback = read_back)
+            self.http.get(url, params, headers = self.base_header,
+                                 callback = callback)
             self.group_info[gcode] = group
 
 
     def do_group_members(self, resp, gcode, last = False):
         """ 获取群成员数据 """
-        data = json.loads(resp.read())
+        data = json.loads(resp.body)
         members = data.get("result", {}).get("minfo", [])
         self.group_members_info[gcode] = {}
         for m in members:
@@ -466,19 +583,21 @@ class WebQQ(object):
                 "key": 0, "ids":[]}
         params = [("r", json.dumps(rdic)), ("clientid", self.clientid),
                 ("psessionid", self.psessionid)]
+        headers = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1",
+                   "Origin":"http://d.web2.qq.com"}
 
-        self.http_stream.post(url, params, headers = self.base_header,
-                              readback = self.handle_msg)
+        self.http.post(url, params, headers = headers, request_timeout = 60.0,
+                       connect_timeout = 60.0, callback = self.handle_msg)
 
 
     def handle_msg(self, resp):
         """ 处理消息 """
         self.poll()
-        data = resp.read()
+        data = resp.body
         try:
             msg = json.loads(data)
-            if msg.get("retcode") == 121:
-                self.restart()
+            if msg.get("retcode") in [121, 103]:
+                logging.error(u"登录失败")
                 return
             logging.info(u"Got message {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
@@ -496,6 +615,7 @@ class WebQQ(object):
                 uin  // 固定为空
                 tp   // 固定为1
                 rc   // 固定为1
+                id   // 固定位0
                 lv   // 固定为2
                 t    // 开始的心跳时间(int(time.time()) * 1000)
             }
@@ -508,10 +628,11 @@ class WebQQ(object):
 
         url = "http://web.qq.com/web2/get_msg_tip"
         params = [("uin", ""), ("tp", 1), ("id", 0), ("retype", 1),
-                    ("rc", 1), ("lv", 2),
+                    ("rc", self.rc), ("lv", 3),
                 ("t", int(self.hb_time * 1000))]
+        self.rc += 1
 
-        self.http_stream.get(url, params, readback = self.hb_next, delay = delay)
+        self.http.get(url, params, callback = self.hb_next, delay = delay)
 
 
     def hb_next(self, resp):
@@ -547,8 +668,8 @@ class WebQQ(object):
                   ("t", time.time()))
 
 
-        def readback(resp):
-            data = resp.read()
+        def callback(resp):
+            data = resp.body
             r = json.loads(data)
             result = r.get("result")
             group_sig = result.get("value")
@@ -562,7 +683,7 @@ class WebQQ(object):
             self.group_sig[to_uin] = group_sig
             callback()
 
-        self.http_stream.get(url, params, readback = readback, headers = self.base_header)
+        self.http.get(url, params, callback = callback, headers = self.base_header)
 
 
     def send_sess_msg(self, to_uin, content):
@@ -600,10 +721,10 @@ class WebQQ(object):
                                     "clientid":self.clientid,
                                     "psessionid":self.psessionid})),
                   ("clientid", self.clientid), ("psessionid", self.psessionid))
-        def readback(resp):
+        def callback(resp):
             self.last_msg_numbers -= n
-        self.http_stream.post(url, params, headers = self.base_header,
-                              readback = readback, delay = delay)
+        self.http.post(url, params, headers = self.base_header,
+                              callback = callback, delay = delay)
 
 
     def send_buddy_msg(self, to_uin, content):
@@ -644,11 +765,11 @@ class WebQQ(object):
         headers = {"Origin": "http://d.web2.qq.com"}
         headers.update(self.base_header)
         delay, n = self.get_delay(content)
-        def readback(resp):
+        def callback(resp):
             self.last_msg_numbers -= n
 
-        self.http_stream.post(url, params, headers = headers, delay = delay,
-                              readback = readback)
+        self.http.post(url, params, headers = headers, delay = delay,
+                              callback = callback)
 
 
     def send_group_msg(self, group_uin, content):
@@ -683,8 +804,8 @@ class WebQQ(object):
         callback = partial(self.send_group_msg_back, source, group_uin, n)
 
 
-        self.http_stream.post(url, params, headers = self.base_header,
-                              readback = callback, delay = delay)
+        self.http.post(url, params, headers = self.base_header,
+                              callback = callback, delay = delay)
 
 
     def get_delay(self, content):
@@ -739,23 +860,23 @@ class WebQQ(object):
         headers = {"Origin":"http://s.web2.qq.com"}
         headers.update(self.base_header)
 
-        def readback(resp):
-            data = resp.read()
+        def callback(resp):
+            data = resp.body
             print data
             result = json.loads(data).get("retcode")
             if result == 0:
                 callback(u"设置成功")
             else:
                 callback(u"设置失败")
-        self.http_stream.post(url, params, headers = headers, readback = readback)
+        self.http.post(url, params, headers = headers, callback = callback)
 
 
     def run(self):
-        self.check()
-        self.http_stream.start()
+        self.get_login_sig()
+        self.http.start()
 
     def stop(self):
-        self.http_stream.ioloop.stop()
+        self.http.stop()
 
 
     def restart(self):
@@ -776,6 +897,9 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             retry = False
             print >>sys.stderr, "Exiting..."
+        except SystemExit as e:
+            if e.code in [2]:
+                retry = False
         except:
             retry = True
             traceback.print_exc()
