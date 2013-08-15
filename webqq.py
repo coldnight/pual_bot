@@ -34,7 +34,6 @@ from hashlib import md5
 from functools import partial
 from datetime import datetime
 
-#from httpclient import TornadoHTTPClient
 from tornadohttpclient import TornadoHTTPClient
 from message_dispatch import MessageDispatch
 from command import upload_file

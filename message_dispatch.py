@@ -181,8 +181,6 @@ class MessageDispatch(object):
 
             if content:
                 self.cmd.talk(content, send_msg)
-            else:
-                send_msg(u"你总的说点什么吧")
             return
 
         nickname = self.webqq.nickname.decode('utf-8').lower()
@@ -191,8 +189,6 @@ class MessageDispatch(object):
             content = content.lower().strip(nickname).strip()
             if content:
                 self.cmd.talk(content, send_msg)
-            else:
-                send_msg(u"你总的说点什么吧")
             return
 
 

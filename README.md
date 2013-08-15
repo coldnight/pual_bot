@@ -55,4 +55,8 @@ easy_install tornado lxml tornadohttpclient
 * 修复消息间隔引起的不合理延迟
 * 支持临时消息
 
+## 2013-08-15
+* 适配最新的WebQQ协议
+* 使用tornadohttpclient库重构
+
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业
