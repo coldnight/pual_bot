@@ -85,7 +85,7 @@ class MessageDispatch(object):
         content = self.handle_qq_msg_contents(contents)
         uname = self.webqq.get_group_member_nick(gcode, uin)
         if content:
-            logging.info(u"Got Group Message {0} from {1}".format(content, gcode))
+            logging.info(u"从 {1} 获取群消息 {0}".format(content, gcode))
             pre = u"{0}: ".format(uname)
             callback = partial(self.webqq.send_group_msg, gcode)
             self.handle_content(uin, content, callback, "g", pre)
@@ -99,7 +99,8 @@ class MessageDispatch(object):
         content = self.handle_qq_msg_contents(contents)
         if content:
             typ = "Sess" if is_sess else "Friend"
-            logging.info(u"Got {0} Message {1} from {2}".format(typ, content, from_uin))
+            logging.info(u"获取来自 {2} 类型位 {0} 的消息:  {1}"
+                         .format(typ, content, from_uin))
             callback = self.webqq.send_sess_msg if is_sess else self.webqq.send_buddy_msg
             callback = partial(callback, from_uin)
             self.handle_content(from_uin, content, callback, "b")
@@ -119,7 +120,7 @@ class MessageDispatch(object):
 
         urls = URL_RE.findall(content)
         if urls:
-            logging.info(u"Get urls {0!r} from {1}".format(urls, content))
+            logging.info(u"从 {1} 中获取链接: {0!r}".format(urls, content))
             for url in urls:
                 self.cmd.url_info(url, send_msg)
 

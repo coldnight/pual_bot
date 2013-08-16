@@ -24,8 +24,10 @@
 
 import re
 import os
+import sys
 import time
 import json
+import atexit
 import random
 import logging
 import traceback
@@ -49,8 +51,9 @@ except ImportError:
     DEBUG = True
 
 
-logging.basicConfig(level = logging.DEBUG if DEBUG else logging.INFO,
+BASIC_KW = dict(level = logging.DEBUG if DEBUG else logging.INFO,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(**BASIC_KW)
 
 SIG_RE = re.compile(r'var g_login_sig=encodeURIComponent\("(.*?)"\);')
 
@@ -320,7 +323,7 @@ class WebQQ(object):
 
 
     def login0(self, resp):
-        logging.info("login1 done, start to login2")
+        logging.info("开始登录前准备...")
         blogin_data = resp.body.decode("utf-8").strip().rstrip(";")
         eval("self." + blogin_data)
 
@@ -343,7 +346,7 @@ class WebQQ(object):
             self.http.get(location2, params, headers = header,
                                  callback = self.get_location1)
         else:
-            logging.info("get_location1.......................x" + str(resp.code))
+            logging.info("准备完毕, 开始登录")
             self.login()
 
 
@@ -452,11 +455,24 @@ class WebQQ(object):
         callback = partial(self.update_friend, login = False)
 
         if login:
-            logging.info("WebQQ is logged in, start to update friend info")
+            logging.info("登录成功")
+            if not DEBUG:
+                aw = ""
+                while aw.lower() not in ["y", "yes", "n", "no"]:
+                    aw = raw_input("是否将程序至于后台[y] ")
+                    if not aw:
+                        aw = "y"
+
+                if aw in ["y", "yes"]:
+                    run_daemon(self.http.post, args = (url, params),
+                               kwargs = dict(headers = headers,
+                                             callback = callback))
+                    return
+
             self.http.post(url, params, headers = headers,
-                                  callback = callback)
+                                    callback = callback)
         else:
-            logging.info("Friend info update")
+            logging.info("加载好友信息")
             lst = data.get("result", {}).get("info", [])
             for info in lst:
                 uin = info.get("uin")
@@ -482,7 +498,7 @@ class WebQQ(object):
                 }
 
         """
-        logging.info("Fetch group list...")
+        logging.info("获取群列表")
         url = "http://s.web2.qq.com/api/get_group_name_list_mask2"
         params = [("r", '{"vfwebqq":"%s"}' % self.vfwebqq),]
         headers = {"Origin": "http://s.web2.qq.com"}
@@ -505,8 +521,7 @@ class WebQQ(object):
             "Referer":
             "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3"
         """
-        logging.info("Fetch group list done")
-        logging.info("Fetch group's members")
+        logging.info("加载组成员信息")
         data = json.loads(resp.body)
         group_list = data.get("result", {}).get("gnamelist", [])
         if not group_list:
@@ -544,11 +559,9 @@ class WebQQ(object):
             group_name = card.get("card")
             self.group_members_info[gcode][uin]["nick"] = group_name
 
-        if last:
-            logging.info("Fetch group's members done")
 
         if last and not self.poll_and_heart:
-            logging.info("Everything is ready, start to poll message")
+            logging.info("万事具备,开始拉取信息和心跳")
             self.poll()
             self.heartbeat(0)
 
@@ -595,11 +608,11 @@ class WebQQ(object):
             if msg.get("retcode") in [121, 103]:
                 logging.error(u"登录失败")
                 return
-            logging.info(u"Got message {0!r}".format(msg))
+            logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
             traceback.print_exc()
-            logging.error(u"Message can't loads: %s", data)
+            logging.error(u"消息加载失败: %s", data)
 
 
     def heartbeat(self, delay = 60):
@@ -616,7 +629,7 @@ class WebQQ(object):
                 t    // 开始的心跳时间(int(time.time()) * 1000)
             }
         """
-        logging.info("Start heartbeat")
+        logging.info("心跳..")
         self.login_time = time.time()
 
         if not self.poll_and_heart:
@@ -633,7 +646,6 @@ class WebQQ(object):
 
     def hb_next(self, resp):
         """ 持续心跳 """
-        logging.info("Heartbeat is done, continue to wait for 60 seconds")
         self.heartbeat()
 
 
@@ -670,10 +682,10 @@ class WebQQ(object):
             result = r.get("result")
             group_sig = result.get("value")
             if r.get("retcode") != 0:
-                logging.warn(u"Error sess message {0}".format(group_sig))
+                logging.warn(u"加载临时消息签名失败: {0}".format(group_sig))
                 return
             try:
-                logging.info("Fetch group sig {0} for {1}".format(group_sig, to_uin))
+                logging.info("加载临时消息签名 {0} for {1}".format(group_sig, to_uin))
             except UnicodeError:
                 return
             self.group_sig[to_uin] = group_sig
@@ -707,7 +719,7 @@ class WebQQ(object):
             callback = partial(self.send_sess_msg, to_uin, content)
             return self.get_sess_group_sig(to_uin, callback)
 
-        logging.info(u"Send sess message {0} to {1}".format(content, to_uin))
+        logging.info(u"发送临时消息 {0} 到 {1}".format(content, to_uin))
         delay, n = self.get_delay(content)
         content = self.make_msg_content(content)
         url = "http://d.web2.qq.com/channel/send_sess_msg2"
@@ -748,7 +760,7 @@ class WebQQ(object):
         HEADERS:
             Referer:http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3
         """
-        logging.info(u"Send buddy message {0} to {1}".format(content, to_uin))
+        logging.info(u"发送好友消息 {0} 给 {1}".format(content, to_uin))
         content = self.make_msg_content(content)
 
         url = "http://d.web2.qq.com/channel/send_buddy_msg2"
@@ -820,13 +832,13 @@ class WebQQ(object):
         self.last_msg_numbers += 1
         self.last_msg_content = content
         if delay:
-            logging.info(u"Has {1} message(s) not send,this message will send"
-                     " {0} second(s) after".format(delay, self.last_msg_numbers))
+            logging.info(u"有 {1} 个消息未投递将会在 {0} 秒后投递"
+                         .format(delay, self.last_msg_numbers))
         return delay, numbers
 
 
     def send_group_msg_back(self, content, group_uin, n, resp):
-        logging.info(u"Send group message {0} to {1}".format(content, group_uin))
+        logging.info(u"发送群消息 {0} 到 {1}".format(content, group_uin))
         self.last_group_msg_time = time.time()
         if self.last_msg_numbers > 0:
             self.last_msg_numbers -= n
@@ -849,7 +861,7 @@ class WebQQ(object):
         if password != Set_Password:
             return callback(u"你没有权限这么做")
 
-        logging.info(u"Set signature {0}".format(signature))
+        logging.info(u"设置QQ签名 {0}".format(signature))
 
         url = "http://s.web2.qq.com/api/set_long_nick2"
         params = (("r", json.dumps({"nlk":signature, "vfwebqq":self.vfwebqq})),)
@@ -871,14 +883,38 @@ class WebQQ(object):
         self.get_login_sig()
         self.http.start()
 
-    def stop(self):
-        self.http.stop()
 
+def run_daemon(callback, args = (), kwargs = {}):
+    path = os.path.abspath(os.path.dirname(__file__))
+    def _fork(num):
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as e:
+            sys.stderr.write("fork #%d faild:%d(%s)\n" % (num, e.errno,
+                                                          e.strerror))
+            sys.exit(1)
 
-    def restart(self):
-        logging.warn("Restart webqq")
-        self.stop()
-        self.run()
+    _fork(1)
+
+    os.setsid()
+    os.chdir("/")
+    os.umask(0)
+
+    _fork(2)
+    lp = os.path.join(path, "log.log")
+    print lp
+    lf = open(lp, 'a')
+    os.dup2(lf.fileno(), sys.stdout.fileno())
+    os.dup2(lf.fileno(), sys.stderr.fileno())
+    callback(*args, **kwargs)
+
+    def _exit():
+        lf.close()
+
+    atexit.register(_exit)
+
 
 
 if __name__ == "__main__":
@@ -894,7 +930,7 @@ if __name__ == "__main__":
             retry = False
             print >>sys.stderr, "Exiting..."
         except SystemExit as e:
-            if e.code in [2]:
+            if e.code in [2, 0, 1]:
                 retry = False
         except:
             retry = True
