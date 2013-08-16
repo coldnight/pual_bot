@@ -108,6 +108,9 @@ class WebQQ(object):
             logging.info("从Cookie中获取ptwebqq的值")
             self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
             self.logined = True
+        elif int(scode) == 4:
+            logging.error(msg)
+            self.check()
         else:
             logging.error(u"server response: {0}".format(msg.decode('utf-8')))
             exit(2)
@@ -161,11 +164,23 @@ class WebQQ(object):
                   ("f_url", "loginerroralert"),
                   ("strong_login", 1), ("login_state", 10),
                   ("t", "20130723001")]
-        self.http.get(url, params, callback = self.check)
+        self.http.get(url, params, callback = self._get_login_sig)
         self.http.get("http://web2.qq.com")
 
+    def _get_login_sig(self, resp):
+        sigs = SIG_RE.findall(resp.body)
+        if len(sigs) == 1:
+            self.login_sig = sigs[0]
+            logging.info(u"获取Login Sig: {0}".format(self.login_sig))
+        else:
+            logging.warn(u"没有获取到 Login Sig, 后续操作可能失败")
+            self.login_sig = ""
 
-    def check(self, resp):
+        self.check()
+
+
+
+    def check(self):
         """ 检查是否需要验证码
         url :
             https://ssl.ptlogin2.qq.com/check
@@ -183,13 +198,6 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
-        sigs = SIG_RE.findall(resp.body)
-        if len(sigs) == 1:
-            self.login_sig = sigs[0]
-            logging.info(u"获取Login Sig: {0}".format(self.login_sig))
-        else:
-            logging.warn(u"没有获取到 Login Sig, 后续操作可能失败")
-            self.login_sig = ""
 
         logging.info(u"检查是否需要验证码...")
         #url = "https://ssl.ptlogin2.qq.com/check"
@@ -452,7 +460,7 @@ class WebQQ(object):
         headers = {"Referer":
             "http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1"}
 
-        callback = partial(self.update_friend, login = False)
+        callback = self.update_friend
 
         if login:
             logging.info("登录成功")
@@ -466,11 +474,12 @@ class WebQQ(object):
                 if aw in ["y", "yes"]:
                     run_daemon(self.http.post, args = (url, params),
                                kwargs = dict(headers = headers,
+                                             kwargs = dict(login = False),
                                              callback = callback))
                     return
 
             self.http.post(url, params, headers = headers,
-                                    callback = callback)
+                           callback = callback, kwargs = dict(login = False))
         else:
             logging.info("加载好友信息")
             lst = data.get("result", {}).get("info", [])
@@ -534,12 +543,12 @@ class WebQQ(object):
                     ("t", int(time.time()))]
             callback = self.do_group_members
             if i == len(group_list) -1 :
-                callback = partial(callback, gcode = gcode, last = True)
+                kwargs = dict(gcode = gcode, last = True)
             else:
-                callback = partial(callback, gcode = gcode)
+                kwargs = dict(gcode = gcode)
 
             self.http.get(url, params, headers = self.base_header,
-                                 callback = callback)
+                          callback = callback, kwargs = kwargs)
             self.group_info[gcode] = group
 
 
@@ -809,11 +818,12 @@ class WebQQ(object):
                 ("clientid", self.clientid)]
 
         delay, n = self.get_delay(content)
-        callback = partial(self.send_group_msg_back, source, group_uin, n)
+        callback = self.send_group_msg_back
 
 
         self.http.post(url, params, headers = self.base_header,
-                              callback = callback, delay = delay)
+                       callback = callback, args = (source, group_uin, n),
+                       delay = delay)
 
 
     def get_delay(self, content):

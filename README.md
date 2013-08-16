@@ -60,6 +60,6 @@ easy_install tornado lxml tornadohttpclient python-daemon
 * 使用tornadohttpclient库重构
 
 ## 2013-08-16
-* 支持输入验证码后将程序至于后台
+* 支持输入验证码后将程序至于后台, 修复由于需要验证码无法将程序至于后台
 
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业
