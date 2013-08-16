@@ -152,7 +152,7 @@ class MessageDispatch(object):
                         help_cmd:HELP_DOC, uptime_cmd : self.webqq.get_uptime()}
 
         if content.encode("utf-8").strip().lower() in commands:
-            body = command_resp[content.strip().lower()]
+            body = command_resp[content.encode("utf-8").strip().lower()]
             if not isinstance(body, (str, unicode)):
                 body = body()
             send_msg(body)
