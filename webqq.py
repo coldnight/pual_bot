@@ -904,7 +904,7 @@ def run_daemon(callback, args = (), kwargs = {}):
 
     _fork(2)
     lp = os.path.join(path, "log.log")
-    print lp
+    print "日志文件: ", lp
     lf = open(lp, 'a')
     os.dup2(lf.fileno(), sys.stdout.fileno())
     os.dup2(lf.fileno(), sys.stderr.fileno())
