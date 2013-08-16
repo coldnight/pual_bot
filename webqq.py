@@ -906,6 +906,7 @@ def run_daemon(callback, args = (), kwargs = {}):
                                                           e.strerror))
             sys.exit(1)
 
+
     _fork(1)
 
     os.setsid()
@@ -913,6 +914,11 @@ def run_daemon(callback, args = (), kwargs = {}):
     os.umask(0)
 
     _fork(2)
+    pp = os.path.join(path, "pid.pid")
+
+    with open(pp, 'w') as f:
+        f.write(str(os.getpid()))
+
     lp = os.path.join(path, "log.log")
     print "日志文件: ", lp
     lf = open(lp, 'a')
@@ -921,6 +927,7 @@ def run_daemon(callback, args = (), kwargs = {}):
     callback(*args, **kwargs)
 
     def _exit():
+        os.remove(pp)
         lf.close()
 
     atexit.register(_exit)
