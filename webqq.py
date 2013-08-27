@@ -489,7 +489,7 @@ class WebQQ(object):
             for info in lst:
                 uin = info.get("uin")
                 self.friend_info[uin] = info
-            logging.info("加载好友信息 {0!r}".format(self.friend_info))
+            logging.debug("加载好友信息 {0!r}".format(self.friend_info))
             self.update_group()
 
             self.http.post(url, params, headers = self.base_header,
@@ -536,9 +536,9 @@ class WebQQ(object):
         """
         logging.info("加载组成员信息")
         data = json.loads(resp.body)
-        logging.info(u"群信息 {0!r}".format(data))
+        logging.debug(u"群信息 {0!r}".format(data))
         group_list = data.get("result", {}).get("gnamelist", [])
-        logging.info(u"群列表: {0!r}".format(group_list))
+        logging.debug(u"群列表: {0!r}".format(group_list))
         if not group_list:
             self.heartbeat(0)
             self.poll()
@@ -563,7 +563,7 @@ class WebQQ(object):
     def do_group_members(self, resp, gcode, last = False):
         """ 获取群成员数据 """
         data = json.loads(resp.body)
-        logging.info(u"获取群成员信息 {0!r}".format(data))
+        logging.debug(u"获取群成员信息 {0!r}".format(data))
         members = data.get("result", {}).get("minfo", [])
         self.group_members_info[gcode] = {}
         for m in members:
@@ -577,7 +577,7 @@ class WebQQ(object):
             group_name = card.get("card")
             self.group_members_info[gcode][uin]["nick"] = group_name
 
-        logging.info(u"群成员信息: {0!r}".format(self.group_members_info))
+        logging.debug(u"群成员信息: {0!r}".format(self.group_members_info))
 
 
         if last and not self.poll_and_heart:
