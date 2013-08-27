@@ -481,11 +481,11 @@ class WebQQ(object):
             self.http.post(url, params, headers = headers,
                            callback = callback, kwargs = dict(login = False))
         else:
-            logging.info("加载好友信息")
             lst = data.get("result", {}).get("info", [])
             for info in lst:
                 uin = info.get("uin")
                 self.friend_info[uin] = info
+            logging.info("加载好友信息 {0!r}".format(self.friend_info))
             self.update_group()
 
             self.http.post(url, params, headers = self.base_header,
@@ -532,29 +532,34 @@ class WebQQ(object):
         """
         logging.info("加载组成员信息")
         data = json.loads(resp.body)
+        logging.info(u"群信息 {0!r}".format(data))
         group_list = data.get("result", {}).get("gnamelist", [])
+        logging.info(u"群列表: {0!r}".format(data))
         if not group_list:
             self.heartbeat(0)
             self.poll()
+
         for i, group in enumerate(group_list):
             gcode = group.get("code")
             url = "http://s.web2.qq.com/api/get_group_info_ext2"
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
                     ("t", int(time.time()))]
-            callback = self.do_group_members
+
             if i == len(group_list) -1 :
                 kwargs = dict(gcode = gcode, last = True)
             else:
                 kwargs = dict(gcode = gcode)
 
             self.http.get(url, params, headers = self.base_header,
-                          callback = callback, kwargs = kwargs)
+                          callback = self.do_group_members, kwargs = kwargs)
+
             self.group_info[gcode] = group
 
 
     def do_group_members(self, resp, gcode, last = False):
         """ 获取群成员数据 """
         data = json.loads(resp.body)
+        logging.info(u"获取群成员信息 {0!r}".format(data))
         members = data.get("result", {}).get("minfo", [])
         self.group_members_info[gcode] = {}
         for m in members:
