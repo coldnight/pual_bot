@@ -448,8 +448,8 @@ class WebQQ(object):
         data = json.loads(resp.body)
         if login:
             if data.get("retcode") != 0:
-                logging.error("登录失败")
-                exit(2)
+                logging.error("获取好友列表失败 {0!r}".format(data))
+                return
             self.vfwebqq = data.get("result", {}).get("vfwebqq")
             self.psessionid = data.get("result", {}).get("psessionid")
 
@@ -615,7 +615,7 @@ class WebQQ(object):
         try:
             msg = json.loads(data)
             if msg.get("retcode") in [121, 103]:
-                logging.error(u"登录失败")
+                logging.error(u"获取消息异常 {0!r}".format(data))
                 return
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)

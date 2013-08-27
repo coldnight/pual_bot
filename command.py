@@ -22,14 +22,12 @@
 #   Desc    :   命令
 #
 import re
-import gzip
 import json
 import urllib2
 import httplib
 import logging
 import traceback
 from functools import partial
-from cStringIO import StringIO
 from lxml import etree
 
 from tornadohttpclient import TornadoHTTPClient, UploadForm as Form
