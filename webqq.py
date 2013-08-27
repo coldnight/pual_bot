@@ -622,6 +622,9 @@ class WebQQ(object):
     def handle_msg(self, resp):
         """ 处理消息 """
         self.poll()
+        if not resp.body:
+            return
+
         data = resp.body
         try:
             msg = json.loads(data)
@@ -630,7 +633,7 @@ class WebQQ(object):
                 return
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
-        except:
+        except ValueError:
             if DEBUG:
                 traceback.print_exc()
             logging.error(u"消息加载失败: %s", data)
