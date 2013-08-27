@@ -105,6 +105,8 @@ class WebQQ(object):
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
         self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
 
+        self.last_heartbeat = None
+
 
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
         """ 模拟JS登录之前的回调, 保存昵称 """
@@ -615,6 +617,7 @@ class WebQQ(object):
     def handle_msg(self, resp):
         """ 处理消息 """
         self.poll()
+        self.check_heartbeat()
         if not resp.body:
             return
 
@@ -630,6 +633,12 @@ class WebQQ(object):
             if DEBUG:
                 traceback.print_exc()
             logging.error(u"消息加载失败: %s", data)
+
+
+    def check_heartbeat(self):
+        if self.last_heartbeat:
+            if (time.time() - self.last_heartbeat) > 120:
+                self.heartbeat(0)
 
 
     def heartbeat(self, delay = 60):
@@ -663,6 +672,7 @@ class WebQQ(object):
     def hb_next(self, resp):
         """ 持续心跳 """
         logging.info("心跳..")
+        self.last_heartbeat = time.time()
         self.heartbeat()
 
 
