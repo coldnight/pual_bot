@@ -534,7 +534,7 @@ class WebQQ(object):
         data = json.loads(resp.body)
         logging.info(u"群信息 {0!r}".format(data))
         group_list = data.get("result", {}).get("gnamelist", [])
-        logging.info(u"群列表: {0!r}".format(data))
+        logging.info(u"群列表: {0!r}".format(group_list))
         if not group_list:
             self.heartbeat(0)
             self.poll()
@@ -543,7 +543,7 @@ class WebQQ(object):
             gcode = group.get("code")
             url = "http://s.web2.qq.com/api/get_group_info_ext2"
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
-                    ("t", int(time.time()))]
+                      ("cb", "undefine"), ("t", int(time.time()))]
 
             if i == len(group_list) -1 :
                 kwargs = dict(gcode = gcode, last = True)
