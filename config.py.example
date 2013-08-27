@@ -18,6 +18,9 @@
 # 是否输出调试信息
 DEBUG = True
 
+# 是否显示详细HTTP跟踪信息
+TRACE = True
+
 # QQ 号码
 QQ = 123456
 

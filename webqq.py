@@ -50,6 +50,10 @@ try:
 except ImportError:
     DEBUG = True
 
+try:
+    from config import TRACE
+except:
+    TRACE = False
 
 BASIC_KW = dict(level = logging.DEBUG if DEBUG else logging.INFO,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
@@ -65,7 +69,7 @@ class WebQQ(object):
         self.nickname = None         # 初始化QQ昵称
         self.http = TornadoHTTPClient()
         self.http.set_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/28.0.1500.71 Chrome/28.0.1500.71 Safari/537.36")
-        self.http.debug = DEBUG
+        self.http.debug = TRACE
         self.http.validate_cert = False
         self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
         self.msg_dispatch = MessageDispatch(self)
@@ -627,7 +631,8 @@ class WebQQ(object):
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
-            traceback.print_exc()
+            if DEBUG:
+                traceback.print_exc()
             logging.error(u"消息加载失败: %s", data)
 
 
