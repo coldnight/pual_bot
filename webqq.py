@@ -573,6 +573,8 @@ class WebQQ(object):
             group_name = card.get("card")
             self.group_members_info[gcode][uin]["nick"] = group_name
 
+        logging.info(u"群成员信息: {0!r}".format(self.group_members_info))
+
 
         if last and not self.poll_and_heart:
             logging.info("万事具备,开始拉取信息和心跳")
