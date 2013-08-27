@@ -348,18 +348,11 @@ class WebQQ(object):
                   "F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerrorale"
                   "rt&strong_login=1&login_state=10&t=20130723001"}
         self.http.get(location1, params, headers = header,
-                             callback = self.get_location1)
+                      callback = self.get_location1)
 
     def get_location1(self, resp):
-        if resp.code == 302:
-            location2 = resp.headers.get("Location")
-            params = []
-            header = {}
-            self.http.get(location2, params, headers = header,
-                                 callback = self.get_location1)
-        else:
-            logging.info("准备完毕, 开始登录")
-            self.login()
+        logging.info("准备完毕, 开始登录")
+        self.login()
 
 
     def login(self):
@@ -653,7 +646,6 @@ class WebQQ(object):
                 t    // 开始的心跳时间(int(time.time()) * 1000)
             }
         """
-        logging.info("心跳..")
         self.login_time = time.time()
 
         if not self.poll_and_heart:
@@ -670,6 +662,7 @@ class WebQQ(object):
 
     def hb_next(self, resp):
         """ 持续心跳 """
+        logging.info("心跳..")
         self.heartbeat()
 
 
