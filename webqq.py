@@ -577,6 +577,7 @@ class WebQQ(object):
 
         if last and not self.poll_and_heart:
             logging.info("万事具备,开始拉取信息和心跳")
+            self.login_time = time.time()
             self.poll()
             self.heartbeat(0)
 
@@ -656,7 +657,6 @@ class WebQQ(object):
                 t    // 开始的心跳时间(int(time.time()) * 1000)
             }
         """
-        self.login_time = time.time()
 
         if not self.poll_and_heart:
             self.poll_and_heart = True
