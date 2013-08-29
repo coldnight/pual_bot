@@ -40,13 +40,14 @@ def upload_file(filename, path):
     """
     form = Form()
     filename = filename.encode("utf-8")
-    form.add_file(fieldname='img', filename=filename,
+    form.add_file(fieldname='name', filename=filename,
                     fileHandle=open(path))
-    img_host = "http://paste.linuxzen.com"
+    img_host = "http://img.vim-cn.com/"
     #img_host = "http://localhost:8800"
     req = urllib2.Request(img_host)
     req.add_header("Content-Type", form.get_content_type())
     req.add_header("Content-Length", len(str(form)))
+    req.add_header("User-Agent", "curl/python")
     req.add_data(str(form))
     return urllib2.urlopen(req)
 
@@ -184,24 +185,19 @@ class Command(object):
         self.http.get(url, params, callback = callback)
 
 
-    def paste(self, code, callback, typ = "text"):
+    def paste(self, code, callback, typ = ""):
         """ 贴代码 """
-        url = "http://paste.linuxzen.com"
-        params = [("class", typ), ("code", code.encode("utf-8")), ("paste", "ff")]
+        params = {'vimcn':code.encode("utf-8")}
+        url = "http://p.vim-cn.com/"
 
-        callback = partial(self.read_paste, oldurl = url, callback = callback)
+        callback = partial(self.read_paste, typ = typ, callback = callback)
         self.http.post(url, params, callback = callback)
 
 
-    def read_paste(self, resp, oldurl, callback):
+    def read_paste(self, resp, typ, callback):
         """ 读取贴代码结果, 并发送消息 """
-        if resp.code == 302:
-            url = resp.headers.get("Location")
-        else:
-            url = resp.effective_url
-        if url != oldurl:
-            content = url
-            callback(content)
+        content = resp.body.strip().rstrip("/") + "/" + typ
+        callback(content)
 
 
     def teach(self, say, response):

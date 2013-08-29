@@ -100,7 +100,7 @@ class WebQQ(object):
         self.login_sig = None
 
         self.login_time = None       # 登录的时间
-        self.last_group_msg_time = time.time()
+        self.last_msg_time = time.time()
         self.last_msg_content = None
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
         self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
@@ -247,7 +247,7 @@ class WebQQ(object):
             fp.close()
             if UPLOAD_CHECKIMG:
                 res = upload_file("check.jpg", path)
-                path = res.url
+                path = res.read()
             print u"验证图片: {0}".format(path)
             check_code = ""
             while not check_code:
@@ -759,6 +759,8 @@ class WebQQ(object):
                   ("clientid", self.clientid), ("psessionid", self.psessionid))
         def callback(resp):
             self.last_msg_numbers -= n
+            self.last_msg_time = time.time()
+
         self.http.post(url, params, headers = self.base_header,
                               callback = callback, delay = delay)
 
@@ -803,6 +805,7 @@ class WebQQ(object):
         delay, n = self.get_delay(content)
         def callback(resp):
             self.last_msg_numbers -= n
+            self.last_msg_time = time.time()
 
         self.http.post(url, params, headers = headers, delay = delay,
                               callback = callback)
@@ -849,7 +852,7 @@ class WebQQ(object):
         MIN = MESSAGE_INTERVAL
         delay = 0
 
-        if time.time() - self.last_group_msg_time < MIN or\
+        if time.time() - self.last_msg_time < MIN or\
            self.last_msg_numbers > 0:
             delay = self.last_msg_numbers * MIN
 
@@ -868,7 +871,7 @@ class WebQQ(object):
 
     def send_group_msg_back(self, content, group_uin, n, resp):
         logging.info(u"发送群消息 {0} 到 {1}".format(content, group_uin))
-        self.last_group_msg_time = time.time()
+        self.last_msg_time = time.time()
         if self.last_msg_numbers > 0:
             self.last_msg_numbers -= n
 
