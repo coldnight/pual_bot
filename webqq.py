@@ -851,22 +851,41 @@ class WebQQ(object):
     def get_delay(self, content):
         MIN = MESSAGE_INTERVAL
         delay = 0
+        sub = time.time() - self.last_msg_time
+        if self.last_msg_numbers < 0:
+            self.last_msg_numbers = 0
 
-        if time.time() - self.last_msg_time < MIN or\
-           self.last_msg_numbers > 0:
-            delay = self.last_msg_numbers * MIN
+        # 不足最小间隔就补足最小间隔
+        if sub < MIN:
+            delay = MIN
+            logging.info(u"间隔 %s 小于 %s, 设置延迟为%s", sub, MIN, delay)
 
-        numbers = 1
-        if self.last_msg_content == content:
-            delay += 0.5
+        # 如果间隔是已有消息间隔的2倍, 则清除已有消息数
+        print "sub", sub, "n:", self.last_msg_numbers
+        if self.last_msg_numbers > 0 and sub / (MIN * self.last_msg_numbers)> 1:
+            self.last_msg_numbers = 0
+
+        # 如果还有消息未发送, 则加上他们的间隔
+        if self.last_msg_numbers > 0:
+            delay += MIN * self.last_msg_numbers
+            logging.info(u"有%s条消息未发送, 延迟为 %s", self.last_msg_numbers, delay)
+
+
+        n = 1
+        # 如果这条消息和上条消息一致, 保险起见再加上一个最小间隔
+        if self.last_msg_content == content and sub < MIN:
+            delay += MIN
             self.last_msg_numbers += 1
-            numbers = 2
+            n = 2
+
         self.last_msg_numbers += 1
         self.last_msg_content = content
+
         if delay:
             logging.info(u"有 {1} 个消息未投递将会在 {0} 秒后投递"
                          .format(delay, self.last_msg_numbers))
-        return delay, numbers
+        # 返回消息累加个数, 在消息发送后减去相应的数目
+        return delay, n
 
 
     def send_group_msg_back(self, content, group_uin, n, resp):
