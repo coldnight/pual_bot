@@ -857,10 +857,10 @@ class WebQQ(object):
         # 不足最小间隔就补足最小间隔
         if sub < MIN:
             delay = MIN
-            logging.info(u"间隔 %s 小于 %s, 设置延迟为%s", sub, MIN, delay)
+            logging.debug(u"间隔 %s 小于 %s, 设置延迟为%s", sub, MIN, delay)
 
         # 如果间隔是已有消息间隔的2倍, 则清除已有消息数
-        print "sub", sub, "n:", self.last_msg_numbers
+        #print "sub", sub, "n:", self.last_msg_numbers
         if self.last_msg_numbers > 0 and sub / (MIN * self.last_msg_numbers)> 1:
             self.last_msg_numbers = 0
 

@@ -36,18 +36,17 @@ code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'scheme', 'smalltalk', 'smarty', 'sql', 'sqlite3', 'squid',
               'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
 
-ABOUT_STR = u"Author    :   cold\nE-mail    :   wh_linux@126.com\n"\
+ABOUT_STR = u"\nAuthor    :   cold\nE-mail    :   wh_linux@126.com\n"\
         u"HomePage  :   http://t.cn/zTocACq\n"\
         u"Project@  :   http://git.io/hWy9nQ"
 
-HELP_DOC =  u"http://paste.linuxzen.com/p/Mzcw/text"
-u"""Pual 使用指南:
-    -tr <content>    可以对<content>进行英汉互译
-    ```<type>\\n<code>  可以将<code>以<type>高亮的方式贴到http://paste.linuxzen.com
-    >>> <statement>  可以执行Python语句, 并为你个人将这个语句产生的定义放在服务器
-    ping Pual        可以查看Pual是否在线
-    about Pual       可以查看Pual相关信息
-    help Pual        显示本信息
+HELP_DOC = u"http://p.vim-cn.com/cbc2/"
+u"""-tr <content>       可以对<content>进行英汉互译
+```<type>\\n<code>  可以将<code>以<type>高亮的方式贴代码
+>>> <statement>     可以执行Python语句
+ping                可以查看是否在线
+about               可以查看相关信息
+help                显示本信息
 """
 
 
@@ -136,19 +135,12 @@ class MessageDispatch(object):
             self.cmd.paste(code, send_msg, typ)
             return
 
-        if typ == "g":
-            nickname = self.webqq.nickname.lower()
-            ping_cmd = "ping " + nickname
-            about_cmd = "about " + nickname
-            uptime_cmd = "uptime " + nickname
-            help_cmd = "help " + nickname
-        else:
-            ping_cmd = "ping"
-            about_cmd = "about"
-            uptime_cmd = "uptime"
-            help_cmd = "help"
+        ping_cmd = "ping"
+        about_cmd = "about"
+        uptime_cmd = "uptime"
+        help_cmd = "help"
         commands = [ping_cmd, about_cmd, help_cmd, uptime_cmd]
-        command_resp = {ping_cmd:u"I am here ^_^", about_cmd:ABOUT_STR,
+        command_resp = {ping_cmd:u"小的在", about_cmd:ABOUT_STR,
                         help_cmd:HELP_DOC, uptime_cmd : self.webqq.get_uptime()}
 
         if content.encode("utf-8").strip().lower() in commands:
