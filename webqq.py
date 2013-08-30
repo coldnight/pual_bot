@@ -388,7 +388,7 @@ class WebQQ(object):
                 u'vfwebqq': u'', u'port': 43332}}
             保存result中的psessionid和vfwebqq供后面接口调用
         """
-        time.sleep(4)
+        #time.sleep(4)
 
         url = "http://d.web2.qq.com/channel/login2"
         params = [("r", '{"status":"online","ptwebqq":"%s","passwd_sig":"",'
@@ -402,7 +402,28 @@ class WebQQ(object):
         headers.update(self.base_header)
         logging.info("登录准备完毕, 开始登录")
         self.http.post(url, params, headers = headers,
-                              callback= self.update_friend)
+                              callback= self.login_back)
+
+    def login_back(self, resp):
+        data = json.loads(resp.body)
+        if data.get("retcode") != 0:
+            logging.error("获取好友列表失败 {0!r}".format(data))
+            return
+        self.vfwebqq = data.get("result", {}).get("vfwebqq")
+        self.psessionid = data.get("result", {}).get("psessionid")
+        logging.info("登录成功")
+        if not DEBUG:
+            aw = ""
+            while aw.lower() not in ["y", "yes", "n", "no"]:
+                aw = raw_input("是否将程序至于后台[y] ")
+                if not aw:
+                    aw = "y"
+
+            if aw in ["y", "yes"]:
+                run_daemon(self.update_friend)
+                return
+
+        self.update_friend()
 
     def _hash(self):
         a = str(self.qid)
@@ -432,7 +453,7 @@ class WebQQ(object):
         return ''.join(d)
 
 
-    def update_friend(self, resp, login = True):
+    def update_friend(self, resp = None):
         """ 更新好友列表
         URL:
             http://s.web2.qq.com/api/get_user_friends2
@@ -444,15 +465,6 @@ class WebQQ(object):
             Referer:http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1
         """
 
-        data = json.loads(resp.body)
-        if login:
-            if data.get("retcode") != 0:
-                logging.error("获取好友列表失败 {0!r}".format(data))
-                return
-            self.vfwebqq = data.get("result", {}).get("vfwebqq")
-            self.psessionid = data.get("result", {}).get("psessionid")
-
-
         url = "http://s.web2.qq.com/api/get_user_friends2"
         params = [("r", json.dumps({"h":"hello", "hash":self._hash(),
                                     "vfwebqq":self.vfwebqq}))]
@@ -461,25 +473,10 @@ class WebQQ(object):
 
         callback = self.update_friend
 
-        if login:
-            logging.info("登录成功")
-            if not DEBUG:
-                aw = ""
-                while aw.lower() not in ["y", "yes", "n", "no"]:
-                    aw = raw_input("是否将程序至于后台[y] ")
-                    if not aw:
-                        aw = "y"
-
-                if aw in ["y", "yes"]:
-                    run_daemon(self.http.post, args = (url, params),
-                               kwargs = dict(headers = headers,
-                                             kwargs = dict(login = False),
-                                             callback = callback))
-                    return
-
-            self.http.post(url, params, headers = headers,
-                           callback = callback, kwargs = dict(login = False))
+        if not resp:
+            self.http.post(url, params, headers = headers, callback = callback)
         else:
+            data = json.loads(resp.body)
             lst = data.get("result", {}).get("info", [])
             for info in lst:
                 uin = info.get("uin")

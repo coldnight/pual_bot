@@ -26,7 +26,7 @@ import logging
 from functools import partial
 
 from command import Command
-from config import MAX_RECEIVER_LENGTH
+from config import MAX_RECEIVER_LENGTH, Set_Password
 
 
 code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
@@ -171,11 +171,17 @@ class MessageDispatch(object):
                 password, signature = content.strip(u"设置签名:").split("|")
                 self.webqq.set_signature(signature, password, send_msg)
                 return
-
+            """
             if content:
                 self.cmd.talk(content, send_msg)
             return
+            """
 
+            if content.startswith("update") and content.endswith(Set_Password):
+                self.webqq.update_friend()
+                return
+
+        """
         nickname = self.webqq.nickname.decode('utf-8').lower()
         if content.lower().startswith(nickname) \
            or content.lower().endswith(nickname):
@@ -183,6 +189,7 @@ class MessageDispatch(object):
             if content:
                 self.cmd.talk(content, send_msg)
             return
+        """
 
 
 
