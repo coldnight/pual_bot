@@ -789,7 +789,6 @@ class WebQQ(object):
         HEADERS:
             Referer:http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=3
         """
-        logging.info(u"发送好友消息 {0} 给 {1}".format(content, to_uin))
         content = self.make_msg_content(content)
 
         url = "http://d.web2.qq.com/channel/send_buddy_msg2"
@@ -803,9 +802,11 @@ class WebQQ(object):
         headers.update(self.base_header)
         delay, n = self.get_delay(content)
         def callback(resp):
+            logging.info(u"发送好友消息 {0} 给 {1} 成功".format(content, to_uin))
             self.last_msg_numbers -= n
             self.last_msg_time = time.time()
 
+        logging.info(u"发送好友消息 {0} 给 {1} ...".format(content, to_uin))
         self.http.post(url, params, headers = headers, delay = delay,
                               callback = callback)
 
@@ -842,6 +843,7 @@ class WebQQ(object):
         callback = self.send_group_msg_back
 
 
+        logging.info(u"发送群消息 {0} 到 {1}...".format(content, group_uin))
         self.http.post(url, params, headers = self.base_header,
                        callback = callback, args = (source, group_uin, n),
                        delay = delay)
@@ -888,7 +890,7 @@ class WebQQ(object):
 
 
     def send_group_msg_back(self, content, group_uin, n, resp):
-        logging.info(u"发送群消息 {0} 到 {1}".format(content, group_uin))
+        logging.info(u"发送群消息 {0} 到 {1} 成功".format(content, group_uin))
         self.last_msg_time = time.time()
         if self.last_msg_numbers > 0:
             self.last_msg_numbers -= n
