@@ -634,7 +634,7 @@ class WebQQ(object):
 
 
     def check_heartbeat(self):
-        if self.last_heartbeat and (time.time() - self.last_heartbeat) > 240:
+        if self.last_heartbeat and (time.time() - self.last_heartbeat) > 600:
             logging.warn(u"心跳中断, 重启心跳..")
             self.heartbeat(0)
 
