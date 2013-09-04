@@ -30,6 +30,7 @@ import json
 import atexit
 import random
 import logging
+import threading
 import traceback
 
 from hashlib import md5
@@ -95,7 +96,6 @@ class WebQQ(object):
         self.group_sig = {}          # 组签名映射, 用作发送临时消息(sess_message)
         self.group_members_info = {} # 初始化组成员列表
 
-        self.hb_time = int(time.time() * 1000)
         self.daid = 164
         self.login_sig = None
 
@@ -104,8 +104,6 @@ class WebQQ(object):
         self.last_msg_content = None
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
         self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
-
-        self.last_heartbeat = None
 
 
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
@@ -616,7 +614,6 @@ class WebQQ(object):
     def handle_msg(self, resp):
         """ 处理消息 """
         self.poll()
-        self.check_heartbeat()
         if not resp.body:
             return
 
@@ -632,12 +629,6 @@ class WebQQ(object):
             if DEBUG:
                 traceback.print_exc()
             logging.error(u"消息加载失败: %s", data)
-
-
-    def check_heartbeat(self):
-        if self.last_heartbeat and (time.time() - self.last_heartbeat) > 600:
-            logging.warn(u"心跳中断, 重启心跳..")
-            self.heartbeat(0)
 
 
     def heartbeat(self, delay = 60):
@@ -658,20 +649,25 @@ class WebQQ(object):
         if not self.poll_and_heart:
             self.poll_and_heart = True
 
+        t = threading.Thread(name="heartThead#1", target= self._heartbeat)
+        t.setDaemon(True)
+        t.start()
+
+
+    def _heartbeat(self):
+        i = self.rc
         url = "http://web.qq.com/web2/get_msg_tip"
-        params = [("uin", ""), ("tp", 1), ("id", 0), ("retype", 1),
-                    ("rc", self.rc), ("lv", 3),
-                ("t", int(self.hb_time * 1000))]
-        self.rc += 1
+        params = dict([("uin", ""), ("tp", 1), ("id", 0), ("retype", 1),
+                       ("rc", i), ("lv", 3), ("t", int(time.time() * 1000))])
 
-        self.http.get(url, params, callback = self.hb_next, delay = delay)
+        def callback(resp):
+            logging.info("心跳..")
 
-
-    def hb_next(self, resp):
-        """ 持续心跳 """
-        logging.info("心跳..")
-        self.last_heartbeat = time.time()
-        self.heartbeat()
+        while True:
+            self.http.get(url, params, callback = callback)
+            i += 1
+            params["rc"] = i
+            time.sleep(60)
 
 
     def make_msg_content(self, content):
