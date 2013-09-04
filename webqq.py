@@ -485,7 +485,7 @@ class WebQQ(object):
             self.update_group()
 
             self.http.post(url, params, headers = self.base_header,
-                                  delay = 300, callback = callback)
+                                  delay = 3600, callback = callback)
 
 
     def update_group(self, resp = None):
@@ -541,18 +541,19 @@ class WebQQ(object):
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
                       ("cb", "undefine"), ("t", int(time.time()))]
 
-            if i == len(group_list) -1 :
-                kwargs = dict(gcode = gcode, last = True)
-            else:
-                kwargs = dict(gcode = gcode)
+            kwargs = dict(gcode = gcode)
+
+            if i == 0:
+                kwargs.update(poll = True)
 
             self.http.get(url, params, headers = self.base_header,
-                          callback = self.do_group_members, kwargs = kwargs)
+                          callback = self.do_group_members, kwargs = kwargs,
+                          delay = i * 300)
 
             self.group_info[gcode] = group
 
 
-    def do_group_members(self, resp, gcode, last = False):
+    def do_group_members(self, resp, gcode, poll = False):
         """ 获取群成员数据 """
         data = json.loads(resp.body)
         logging.debug(u"获取群成员信息 {0!r}".format(data))
@@ -572,8 +573,8 @@ class WebQQ(object):
         logging.debug(u"群成员信息: {0!r}".format(self.group_members_info))
 
 
-        if last and not self.poll_and_heart:
-            logging.info("万事具备,开始拉取信息和心跳")
+        if poll and not self.poll_and_heart:
+            logging.info("开始拉取信息和心跳")
             self.login_time = time.time()
             self.poll()
             self.heartbeat(0)
