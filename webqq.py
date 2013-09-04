@@ -529,7 +529,7 @@ class WebQQ(object):
         logging.debug(u"群信息 {0!r}".format(data))
         group_list = data.get("result", {}).get("gnamelist", [])
         logging.debug(u"群列表: {0!r}".format(group_list))
-        if not group_list:
+        if not group_list and not self.poll_and_heart:
             self.heartbeat(0)
             self.poll()
 
