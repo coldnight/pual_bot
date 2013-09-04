@@ -664,7 +664,10 @@ class WebQQ(object):
             logging.info("心跳..")
 
         while True:
-            self.http.get(url, params, callback = callback)
+            try:
+                self.http.get(url, params, callback = callback)
+            except:
+                pass
             i += 1
             params["rc"] = i
             time.sleep(60)
