@@ -622,6 +622,7 @@ class WebQQ(object):
             msg = json.loads(data)
             if msg.get("retcode") in [121, 103]:
                 logging.error(u"获取消息异常 {0!r}".format(data))
+                sys.exit(2)
                 return
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
