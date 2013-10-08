@@ -42,7 +42,7 @@ def upload_file(filename, path):
     filename = filename.encode("utf-8")
     form.add_file(fieldname='name', filename=filename,
                     fileHandle=open(path))
-    img_host = "http://img.vim-cn.com/"
+    img_host = "http://dimg.vim-cn.com/"
     #img_host = "http://localhost:8800"
     req = urllib2.Request(img_host)
     req.add_header("Content-Type", form.get_content_type())

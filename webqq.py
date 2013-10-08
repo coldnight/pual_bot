@@ -79,7 +79,7 @@ class WebQQ(object):
 
         self.aid = 1003903                                    # aid 固定
         self.clientid = random.randrange(11111111, 99999999)  # 客户端id 随机固定
-        self.msg_id = random.randrange(1111111, 99999999)     # 消息id, 随机初始化
+        self.msg_id = random.randrange(11111111, 99999999)     # 消息id, 随机初始化
 
         self.require_check = False   # 是否需要验证码
         self.poll_and_heart = False  # 开始拉取消息和心跳
@@ -130,6 +130,10 @@ class WebQQ(object):
         MIN = 60
         HOUR = 60 * MIN
         DAY = 24 * HOUR
+
+        if not isinstance(self.login_time, (int, float)):
+            self.login_time = time.time()
+
         up_time = datetime.fromtimestamp(self.login_time).strftime("%H:%M:%S")
 
         now = time.time()
@@ -217,14 +221,14 @@ class WebQQ(object):
                    "in=1&login_state=10&t=20130723001"}
         self.http.get(url, params, headers = headers, callback = self.handle_verify)
 
-        cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
-        cookie_params = (("lc", "ch"),)
-        headers = {"Referer": "http://www.simsimi.com/talk.htm"}
-        self.http.get(cookie_url, cookie_params, headers = headers)
+        #cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
+        #cookie_params = (("lc", "ch"),)
+        #headers = {"Referer": "http://www.simsimi.com/talk.htm"}
+        #self.http.get(cookie_url, cookie_params, headers = headers)
 
-        headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
-        self.http.get("http://www.simsimi.com/func/langInfo",
-                             cookie_params, headers = headers)
+        #headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
+        #self.http.get("http://www.simsimi.com/func/langInfo",
+        #                     cookie_params, headers = headers)
 
 
     def handle_pwd(self, r, vcode, huin):
@@ -244,6 +248,7 @@ class WebQQ(object):
             fp.write(resp.body)
             fp.close()
             if UPLOAD_CHECKIMG:
+                logging.info(u"正在上传验证码..")
                 res = upload_file("check.jpg", path)
                 path = res.read()
             print u"验证图片: {0}".format(path)
@@ -836,13 +841,16 @@ class WebQQ(object):
             "psessionid": self.psessionid}
         params = [("r", json.dumps(r)), ("psessionid", self.psessionid),
                 ("clientid", self.clientid)]
+        print params
 
         delay, n = self.get_delay(content)
         callback = self.send_group_msg_back
 
 
         logging.info(u"发送群消息 {0} 到 {1}...".format(content, group_uin))
-        self.http.post(url, params, headers = self.base_header,
+        headers = {"Origin": "http://d.web2.qq.com",
+                   "Referer":"http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2"}
+        self.http.post(url, params, headers = headers,
                        callback = callback, args = (source, group_uin, n),
                        delay = delay)
 
@@ -932,6 +940,9 @@ class WebQQ(object):
     def run(self):
         self.get_login_sig()
         self.http.start()
+
+    def stop(self):
+        self.http.stop()
 
 
 def run_daemon(callback, args = (), kwargs = {}):
