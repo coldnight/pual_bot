@@ -103,7 +103,8 @@ class WebQQ(object):
         self.last_msg_time = time.time()
         self.last_msg_content = None
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
-        self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
+        #self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
+        self.base_header = {"Referer":"http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=3"}
 
 
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
@@ -542,7 +543,7 @@ class WebQQ(object):
             gcode = group.get("code")
             url = "http://s.web2.qq.com/api/get_group_info_ext2"
             params = [("gcode", gcode),("vfwebqq", self.vfwebqq),
-                      ("cb", "undefine"), ("t", int(time.time()))]
+                      ("cb", "undefined"), ("t", int(time.time()))]
 
             kwargs = dict(gcode = gcode)
 
