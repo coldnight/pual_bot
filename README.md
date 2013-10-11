@@ -8,7 +8,7 @@ pual_bot是一套建立在`Tornado`上的高效的支持并发的WebQQ机器人,
 # 安装配置
 程序依赖tornado, 可使用 easy_install 安装
 ```bash
-easy_install tornado lxml tornadohttpclient
+easy_install pycurl tornado tornadohttpclient
 ```
 
 将`config.py.example`重命名为 `config.py`, 填入QQ号码和密码配置, 执行webqq.py脚本. 
@@ -61,5 +61,9 @@ easy_install tornado lxml tornadohttpclient
 
 ## 2013-08-16
 * 支持输入验证码后将程序至于后台, 修复由于需要验证码无法将程序至于后台
+
+## 2013-10-11
+* 修复若干问题
+* 去除lxml依赖
 
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业

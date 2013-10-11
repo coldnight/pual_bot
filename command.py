@@ -28,7 +28,6 @@ import httplib
 import logging
 import traceback
 from functools import partial
-from lxml import etree
 
 from tornadohttpclient import TornadoHTTPClient, UploadForm as Form
 from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH, SimSimi_Proxy
@@ -67,6 +66,8 @@ class Command(object):
     http = TornadoHTTPClient()
     _sim_try = {}
     simsimi_proxy = False
+    _TITLE_PATTERN = re.compile(r'<title>(.*?)</title>', re.M|re.I)
+
 
     def url_info(self, url, callback, isredirect = False):
         """ 获取url信息
@@ -102,12 +103,11 @@ class Command(object):
                     charset = "gbk"
 
                 if charset:
-                    ucont = content.lower().decode(charset).encode("utf-8").decode("utf-8")
+                    ucont = content.decode(charset).encode("utf-8").decode("utf-8")
                 else:
-                    ucont = content.lower().decode("utf-8")
-                parser = etree.HTML(ucont)
-                title = parser.xpath(u"//title")
-                title = title[0].text if len(title) >= 1 else None
+                    ucont = content.decode("utf-8")
+                titles = self._TITLE_PATTERN.findall(ucont)
+                title = titles[0] if titles else None
                 if title:
                     body += u"网页标题: "+title.replace("\r", "").replace("\n", "")
                 if isredirect:
