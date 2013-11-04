@@ -39,8 +39,9 @@ from datetime import datetime
 
 from tornadohttpclient import TornadoHTTPClient
 from message_dispatch import MessageDispatch
-from command import upload_file
-from config import UPLOAD_CHECKIMG, Set_Password
+from command import upload_file, send_notice_email
+from server import http_server_run
+from config import UPLOAD_CHECKIMG, Set_Password, QQ, QQ_PWD
 try:
     from config import MESSAGE_INTERVAL
 except ImportError:
@@ -53,8 +54,18 @@ except ImportError:
 
 try:
     from config import TRACE
-except:
+except ImportError:
     TRACE = False
+
+try:
+    from config import HTTP_CHECKIMG, HTTP_PORT, HTTP_LISTEN
+except ImportError:
+    HTTP_CHECKIMG = False
+
+try:
+    from config import EMAIL_NOTICE
+except ImportError:
+    EMAIL_NOTICE = False
 
 BASIC_KW = dict(level = logging.DEBUG if DEBUG else logging.INFO,
                     format = "%(asctime)s [%(levelname)s] %(message)s")
@@ -62,9 +73,18 @@ logging.basicConfig(**BASIC_KW)
 
 SIG_RE = re.compile(r'var g_login_sig=encodeURIComponent\("(.*?)"\);')
 
+class TmpData(object):
+    r = None
+    uin = None
+    next_callback = None
+    def __init__(self, r, uin, next_callback):
+        TmpData.r = r
+        TmpData.uin = uin
+        TmpData.next_callback = next_callback
+
 
 class WebQQ(object):
-    def __init__(self, qid, pwd):
+    def __init__(self, qid, pwd, handler = None):
         self.qid = qid               # QQ 号
         self.__pwd = pwd             # QQ密码
         self.nickname = None         # 初始化QQ昵称
@@ -90,6 +110,8 @@ class WebQQ(object):
 
         self.check_data = None       # 初始化检查时返回的数据
         self.blogin_data = None      # 初始化登录前返回的数据
+
+        self.checkimg_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "check.jpg")
 
         self.friend_info = {}        # 初始化好友列表
         self.group_info = {}         # 初始化组列表
@@ -163,7 +185,9 @@ class WebQQ(object):
         return "{0} up {1} {2}".format(up_time, num, unit)
 
 
-    def get_login_sig(self):
+    def get_login_sig(self, handler = None):
+        self.handler = handler # 启用HTTP_CHECKIMG的Handler
+
         logging.info("获取 login_sig...")
         url = "https://ui.ptlogin2.qq.com/cgi-bin/login"
         params = [("daid", self.daid), ("target", "self"), ("style", 5),
@@ -243,8 +267,7 @@ class WebQQ(object):
         """ 获取验证图片 """
 
         def callback(resp):
-            path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                                "check.jpg")
+            path = self.checkimg_path
             fp = open(path, 'wb')
             fp.write(resp.body)
             fp.close()
@@ -254,12 +277,24 @@ class WebQQ(object):
                 path = res.read()
             print u"验证图片: {0}".format(path)
             check_code = ""
-            while not check_code:
-                check_code = raw_input("输入验证图片上的验证码: ")
-            ccode = check_code.strip().lower()
-            self.check_code = ccode
-            pwd = self.handle_pwd(r, ccode.upper(), uin)
-            self.before_login(pwd)
+            if not HTTP_CHECKIMG:
+                while not check_code:
+                    check_code = raw_input("输入验证图片上的验证码: ")
+                ccode = check_code.strip().lower()
+                self.check_code = ccode
+                pwd = self.handle_pwd(r, ccode.upper(), uin)
+                self.before_login(pwd)
+            else:
+                logging.info(u"请打开http://{0}:{1} 提交验证码"
+                             .format(HTTP_LISTEN, HTTP_PORT))
+                self.handler.r = r
+                self.handler.uin = uin
+                self.handler.next_callback = self.before_login
+                if send_notice_email():
+                    logging.info(u"已成功发送邮件提醒")
+                else:
+                    logging.warn(u"发送邮件提醒失败")
+
 
         url = "https://ssl.captcha.qq.com/getimage"
         params = [("aid", self.aid), ("r", random.random()),
@@ -345,18 +380,24 @@ class WebQQ(object):
         blogin_data = resp.body.decode("utf-8").strip().rstrip(";")
         eval("self." + blogin_data)
 
-        location1 = re.findall(r'ptuiCB\(\'0\'\,\'0\'\,\'(.*)\'\,\'0\'\,',
-                               blogin_data)[0]
-        params = []
-        header = {"Referer": "https://ui.ptlogin2.qq.com/cgi-bin/login?d"
-                  "aid=164&target=self&style=5&mibao_css=m_webqq&appid=1"
-                  "003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2"
-                  "F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerrorale"
-                  "rt&strong_login=1&login_state=10&t=20130723001"}
-        self.http.get(location1, params, headers = header,
-                      callback = self.get_location1)
+        try:
+            location1 = re.findall(r'ptuiCB\(\'0\'\,\'0\'\,\'(.*)\'\,\'0\'\,',
+                                blogin_data)[0]
+            params = []
+            header = {"Referer": "https://ui.ptlogin2.qq.com/cgi-bin/login?d"
+                    "aid=164&target=self&style=5&mibao_css=m_webqq&appid=1"
+                    "003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2"
+                    "F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerrorale"
+                    "rt&strong_login=1&login_state=10&t=20130723001"}
+            self.http.get(location1, params, headers = header,
+                        callback = self.get_location1)
+        except:
+            pass
+
 
     def get_location1(self, resp):
+        if os.path.exists(self.checkimg_path):
+            os.remove(self.checkimg_path)
         logging.info("准备完毕, 开始登录")
         self.login()
 
@@ -416,7 +457,7 @@ class WebQQ(object):
         self.vfwebqq = data.get("result", {}).get("vfwebqq")
         self.psessionid = data.get("result", {}).get("psessionid")
         logging.info("登录成功")
-        if not DEBUG:
+        if not DEBUG and not HTTP_CHECKIMG:
             aw = ""
             while aw.lower() not in ["y", "yes", "n", "no"]:
                 aw = raw_input("是否将程序至于后台[y] ")
@@ -626,9 +667,9 @@ class WebQQ(object):
         data = resp.body
         try:
             msg = json.loads(data)
-            if msg.get("retcode") in [121]:
+            if msg.get("retcode") in [121, 100006]:
                 logging.error(u"获取消息异常 {0!r}".format(data))
-                sys.exit(2)
+                sys.exit()   # 退出重启
                 return
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
@@ -987,14 +1028,15 @@ def run_daemon(callback, args = (), kwargs = {}):
 
 
 if __name__ == "__main__":
-    from config import QQ, QQ_PWD
-
+    webqq = WebQQ(QQ, QQ_PWD)
     def main():
         import sys
-        webqq = WebQQ(QQ, QQ_PWD)
         retry = True
         try:
-            webqq.run()
+            if HTTP_CHECKIMG:
+                http_server_run(webqq)
+            else:
+                webqq.run()
         except KeyboardInterrupt:
             retry = False
             print >>sys.stderr, "Exiting..."
@@ -1008,4 +1050,7 @@ if __name__ == "__main__":
             if retry:
                 os.execv(sys.executable, [sys.executable] + sys.argv)
 
-    main()
+    if HTTP_CHECKIMG and not DEBUG and not TRACE:
+        run_daemon(main)
+    else:
+        main()

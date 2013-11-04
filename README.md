@@ -13,6 +13,13 @@ easy_install pycurl tornado tornadohttpclient
 
 将`config.py.example`重命名为 `config.py`, 填入QQ号码和密码配置, 执行webqq.py脚本. 
 
+# 最近更新
+
+## 2013-11-04
+
+* 增加一个HTTP server用来通过浏览器输入验证码(配置见 ``config.py.example``)
+* 增加当需要验证码时发送邮件提醒(配置见 ``config.py.example``)
+
 # 更新
 * 放弃原先的 pyxmpp2 mainloop 改为tornado
 * 不在将验证图片放到网站上, 而是作为临时文件保存, 请使用图片查看器查看, 然后输入验证码
@@ -65,5 +72,9 @@ easy_install pycurl tornado tornadohttpclient
 ## 2013-10-11
 * 修复若干问题
 * 去除lxml依赖
+
+## 2013-11-04
+* 增加一个HTTP server用来通过浏览器输入验证码(配置见 ``config.py.example``)
+* 增加当需要验证码时发送邮件提醒(配置见 ``config.py.example``)
 
 如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业

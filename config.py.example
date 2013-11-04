@@ -53,3 +53,32 @@ Set_Password = "set_password"
 # 两条消息最小时间间隔, bot 连续发送消息, 如果频率过快会被tx过滤掉
 # 设置一个时间间隔来确保消息被正常投递, 安全值是0.5, 其他更小的值未测试
 MESSAGE_INTERVAL = 0.5
+
+# 是否启用一个HTTP服务器来输入验证码
+# 启用这个将按照下面的配置启用一个HTTP Server提供输入验证码的接口
+HTTP_CHECKIMG = False
+
+# HTTP 验证码服务器监听地址
+HTTP_LISTEN = "0.0.0.0"
+
+# HTTP 验证码服务器监听端口
+HTTP_PORT = 8000
+
+
+# 是否启用提醒(当程序重启需要验证码时发送邮件通知)
+# 邮箱可以用类似126的手机号邮箱会及时发送短信提醒
+EMAIL_NOTICE = False
+
+# 发送邮件使用SMTP方式, 
+# 指定SMTP地址
+SMTP_HOST = "smtp.126.com"
+
+# 指定发件账号
+SMTP_ACCOUNT = "account"
+
+# 指定发件密码
+SMTP_PASSWORD = "aa"
+
+# 指定接收提醒的邮箱
+# 为了及时收到提醒, 请使用可以连通手机的邮箱
+EMAIL = "11111111@126.com"

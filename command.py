@@ -26,11 +26,21 @@ import json
 import urllib2
 import httplib
 import logging
+import smtplib
 import traceback
+
 from functools import partial
+from email.mime.text import MIMEText
 
 from tornadohttpclient import TornadoHTTPClient, UploadForm as Form
 from config import YOUDAO_KEY, YOUDAO_KEYFROM, MAX_LENGTH, SimSimi_Proxy
+
+try:
+    from config import SMTP_ACCOUNT, SMTP_PASSWORD, SMTP_HOST, EMAIL
+    from config import HTTP_LISTEN, HTTP_PORT
+except ImportError:
+    SMTP_HOST = None
+    pass
 
 
 def upload_file(filename, path):
@@ -52,6 +62,35 @@ def upload_file(filename, path):
 
 black_words = [u"免费", u"微信", u"微 信", u"泡妞", u"会员", u"功能", u"体验",
                u"技巧", u"必看", u"必学", u"加我", u"搜索", u"新型", u"发送"]
+
+
+def send_notice_email():
+    """ 发送提醒邮件
+    """
+    if not SMTP_HOST:
+        return False
+
+    postfix = ".".join(SMTP_HOST.split(".")[1:])
+    me = "bot<{0}@{1}>".format(SMTP_ACCOUNT, postfix)
+
+    msg =  MIMEText(""" 你的WebQQ机器人需要一个验证码,
+                 请打开你的服务器输入验证码:
+                 http://{0}:{1}""".format(HTTP_LISTEN, HTTP_PORT),
+                 _subtype="plain", _charset="utf-8")
+    msg['Subject'] = u"WebQQ机器人需要验证码"
+    msg["From"] = me
+    msg['To'] = EMAIL
+    try:
+        server = smtplib.SMTP()
+        server.connect(SMTP_HOST)
+        server.login(SMTP_ACCOUNT, SMTP_PASSWORD)
+        server.sendmail(me, [EMAIL], msg.as_string())
+        server.close()
+        return True
+    except Exception, e:
+        traceback.print_exc()
+        return False
+
 
 def is_black_msg(content):
     coe = 0
