@@ -73,16 +73,6 @@ logging.basicConfig(**BASIC_KW)
 
 SIG_RE = re.compile(r'var g_login_sig=encodeURIComponent\("(.*?)"\);')
 
-class TmpData(object):
-    r = None
-    uin = None
-    next_callback = None
-    def __init__(self, r, uin, next_callback):
-        TmpData.r = r
-        TmpData.uin = uin
-        TmpData.next_callback = next_callback
-
-
 class WebQQ(object):
     def __init__(self, qid, pwd, handler = None):
         self.qid = qid               # QQ 号
