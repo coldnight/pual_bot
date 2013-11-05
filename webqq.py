@@ -130,7 +130,7 @@ class WebQQ(object):
             self.check()
         else:
             logging.error(u"server response: {0}".format(msg.decode('utf-8')))
-            exit(2)
+            exit()   # 重新启动
 
         if nickname:
             self.nickname = nickname
@@ -1015,12 +1015,11 @@ def run_daemon(callback, args = (), kwargs = {}):
 
     atexit.register(_exit)
 
+def main(webqq = None):
+    if not webqq:
+        webqq = WebQQ(QQ, QQ_PWD)
 
-
-if __name__ == "__main__":
-    webqq = WebQQ(QQ, QQ_PWD)
-    def main():
-        import sys
+    def _main():
         retry = True
         try:
             if HTTP_CHECKIMG:
@@ -1041,6 +1040,12 @@ if __name__ == "__main__":
                 os.execv(sys.executable, [sys.executable] + sys.argv)
 
     if HTTP_CHECKIMG and not DEBUG and not TRACE:
-        run_daemon(main)
+        run_daemon(_main)
     else:
-        main()
+        _main()
+
+
+
+if __name__ == "__main__":
+    main()
+
