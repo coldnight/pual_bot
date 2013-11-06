@@ -265,9 +265,9 @@ class WebQQ(object):
                 logging.info(u"正在上传验证码..")
                 res = upload_file("check.jpg", path)
                 path = res.read()
-            print u"验证图片: {0}".format(path)
             check_code = ""
             if not HTTP_CHECKIMG:
+                print u"验证图片: {0}".format(path)
                 while not check_code:
                     check_code = raw_input("输入验证图片上的验证码: ")
                 ccode = check_code.strip().lower()
@@ -1003,7 +1003,6 @@ def run_daemon(callback, args = (), kwargs = {}):
         f.write(str(os.getpid()))
 
     lp = os.path.join(path, "log.log")
-    print "日志文件: ", lp
     lf = open(lp, 'a')
     os.dup2(lf.fileno(), sys.stdout.fileno())
     os.dup2(lf.fileno(), sys.stderr.fileno())
