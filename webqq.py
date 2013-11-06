@@ -993,7 +993,7 @@ def run_daemon(callback, args = (), kwargs = {}):
     _fork(1)
 
     os.setsid()
-    os.chdir("/")
+    # os.chdir("/")
     os.umask(0)
 
     _fork(2)
@@ -1037,7 +1037,7 @@ def main(webqq = None):
             traceback.print_exc()
         finally:
             if retry:
-                os.execv(sys.executable, [sys.executable] + [os.path.abspath(__file__)] + sys.argv[1:])
+                os.execv(sys.executable, [sys.executable] + sys.argv)
 
     if HTTP_CHECKIMG and not DEBUG and not TRACE:
         run_daemon(_main)
