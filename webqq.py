@@ -1037,7 +1037,7 @@ def main(webqq = None):
             traceback.print_exc()
         finally:
             if retry:
-                os.execv(sys.executable, [sys.executable] + os.path.abspath(__file__))
+                os.execv(sys.executable, [sys.executable] + [os.path.abspath(__file__)] + sys.argv[1:])
 
     if HTTP_CHECKIMG and not DEBUG and not TRACE:
         run_daemon(_main)
