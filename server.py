@@ -92,6 +92,7 @@ class CheckImgAPIHandler(BaseHandler):
             if self.webqq.require_check_time and \
             time.time() - self.webqq.require_check_time > 900:
                 self.write({"status":False, "message":u"验证码过期"})
+                self.webqq.check()
             else:
                 self.write({"status":True, "require":True, "url":"/check"})
             return
@@ -114,6 +115,7 @@ class SendMessageHandler(BaseHandler):
 app = Application([(r'/', CheckHandler), (r'/check', CImgHandler),
                    (r'/api/check', CheckImgAPIHandler),
                    (r'/api/send', SendMessageHandler),
+                   (r'/api/input', CheckHandler)
                    ])
 app.listen(HTTP_PORT, address = HTTP_LISTEN)
 
