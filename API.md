@@ -6,6 +6,10 @@ WebQQ发送消息接口
 
     /api/check
 
+方法
+
+    GET
+
 参数
 
     无
@@ -27,6 +31,10 @@ WebQQ发送消息接口
 
     /api/input
 
+方法
+
+    POST
+
 参数
 
     vertify        验证码
@@ -47,6 +55,10 @@ WebQQ发送消息接口
 接口
 
     /api/send
+
+方法
+
+    POST
 
 参数
 
