@@ -226,6 +226,6 @@ class MessageDispatch(object):
                 if m.get("poll_type") == "message":
                     self.handle_qq_message(m)
                 if m.get("poll_type") == "kick_message":
-                    self.webqq.stop()
+                    self.webqq.check()
                 if m.get("poll_type") == "sess_message":
                     self.handle_qq_message(m, True)

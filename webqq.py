@@ -42,6 +42,9 @@ from message_dispatch import MessageDispatch
 from command import upload_file, send_notice_email
 from server import http_server_run
 from config import UPLOAD_CHECKIMG, Set_Password, QQ, QQ_PWD
+
+import _hash
+
 try:
     from config import MESSAGE_INTERVAL
 except ImportError:
@@ -98,8 +101,7 @@ class WebQQ(object):
         self.check_code = None
         self.ptwebqq = None
 
-        self.check_data = None       # 初始化检查时返回的数据
-        self.blogin_data = None      # 初始化登录前返回的数据
+        self.require_check_time = None  # 需要验证码的时间
 
         self.checkimg_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "check.jpg")
 
@@ -107,6 +109,7 @@ class WebQQ(object):
         self.group_info = {}         # 初始化组列表
         self.group_sig = {}          # 组签名映射, 用作发送临时消息(sess_message)
         self.group_members_info = {} # 初始化组成员列表
+        self.mark_to_uin = {}        # 备注名->uin的映射
 
         self.daid = 164
         self.login_sig = None
@@ -115,6 +118,11 @@ class WebQQ(object):
         self.last_msg_time = time.time()
         self.last_msg_content = None
         self.last_msg_numbers = 0    # 剩余位发送的消息数量
+
+        self.status_callback = None
+
+        self.poll_stoped = True      # 获取消息是否停止
+        self.hThread = None               # 心跳线程
         #self.base_header = {"Referer":"https://d.web2.qq.com/cfproxy.html?v=20110331002&callback=1"}
         self.base_header = {"Referer":"http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=3"}
 
@@ -122,15 +130,19 @@ class WebQQ(object):
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
         """ 模拟JS登录之前的回调, 保存昵称 """
         if int(scode) == 0:
-            logging.info("从Cookie中获取ptwebqq的值")
-            self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
+            if not self.ptwebqq:
+                logging.info("从Cookie中获取ptwebqq的值")
+                try:
+                    self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
+                except:
+                    return self.check()
             self.logined = True
         elif int(scode) == 4:
             logging.error(msg)
             self.check()
         else:
             logging.error(u"server response: {0}".format(msg.decode('utf-8')))
-            exit()   # 重新启动
+            self.check()
 
         if nickname:
             self.nickname = nickname
@@ -177,6 +189,7 @@ class WebQQ(object):
 
     def get_login_sig(self, handler = None):
         self.handler = handler # 启用HTTP_CHECKIMG的Handler
+        self.stop_poll_heartbeat = False
 
         logging.info("获取 login_sig...")
         url = "https://ui.ptlogin2.qq.com/cgi-bin/login"
@@ -221,7 +234,7 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
-
+        self.poll_stoped = True   # 检查时停止轮询消息
         logging.info(u"检查是否需要验证码...")
         #url = "https://ssl.ptlogin2.qq.com/check"
         url = "http://check.ptlogin2.qq.com/check"
@@ -235,15 +248,6 @@ class WebQQ(object):
                    "q.com%2Floginproxy.html&f_url=loginerroralert&strong_log"
                    "in=1&login_state=10&t=20130723001"}
         self.http.get(url, params, headers = headers, callback = self.handle_verify)
-
-        #cookie_url = "http://www.simsimi.com/talk.htm?lc=ch"
-        #cookie_params = (("lc", "ch"),)
-        #headers = {"Referer": "http://www.simsimi.com/talk.htm"}
-        #self.http.get(cookie_url, cookie_params, headers = headers)
-
-        #headers = {"Referer": "http://www.simsimi.com/talk.htm?lc=ch"}
-        #self.http.get("http://www.simsimi.com/func/langInfo",
-        #                     cookie_params, headers = headers)
 
 
     def handle_pwd(self, r, vcode, huin):
@@ -280,10 +284,12 @@ class WebQQ(object):
                 self.handler.r = r
                 self.handler.uin = uin
                 self.handler.next_callback = self.before_login
-                if send_notice_email():
-                    logging.info(u"已成功发送邮件提醒")
-                else:
-                    logging.warn(u"发送邮件提醒失败")
+                self.require_check_time = time.time()
+                if EMAIL_NOTICE:
+                    if send_notice_email():
+                        logging.info(u"已成功发送邮件提醒")
+                    else:
+                        logging.warn(u"发送邮件提醒失败")
 
 
         url = "https://ssl.captcha.qq.com/getimage"
@@ -294,7 +300,12 @@ class WebQQ(object):
 
     def handle_verify(self, resp):
         ptui_checkVC = lambda r, v, u: (r, v, u)
-        r, vcode, uin = eval(resp.body.strip().rstrip(";"))
+        data = resp.body
+        if not data:
+            self.check()   # 没有数据重新检查
+            return
+
+        r, vcode, uin = eval(data.strip().rstrip(";"))
         if int(r) == 0:
             logging.info("验证码检查完毕, 不需要验证码")
             password = self.handle_pwd(r, vcode, uin)
@@ -306,7 +317,7 @@ class WebQQ(object):
             self.require_check = True
 
 
-    def before_login(self, password):
+    def before_login(self, password, callback = None):
         """ 登录之前的操作
         url:
             https://ssl.ptlogin2.qq.com/login
@@ -342,6 +353,8 @@ class WebQQ(object):
         先检查是否需要验证码,不需要验证码则首先执行一次登录
         然后获取Cookie里的ptwebqq保存在实例里,供后面的接口调用
         """
+        if callback:
+            self.status_callback = callback
         url = "https://ssl.ptlogin2.qq.com/login"
         params = [("u",self.qid), ("p",password), ("verifycode", self.check_code),
                   ("webqq_type",10), ("remember_uin", 1),("login2qq",1),
@@ -440,13 +453,19 @@ class WebQQ(object):
                               callback= self.login_back)
 
     def login_back(self, resp):
+        self.require_check_time = None
         data = json.loads(resp.body)
         if data.get("retcode") != 0:
-            logging.error("获取好友列表失败 {0!r}".format(data))
+            if self.status_callback:
+                self.status_callback(False, "登录失败 {0}".format(data))
+
+            logging.error("登录失败 {0!r}".format(data))
             return
         self.vfwebqq = data.get("result", {}).get("vfwebqq")
         self.psessionid = data.get("result", {}).get("psessionid")
         logging.info("登录成功")
+
+
         if not DEBUG and not HTTP_CHECKIMG:
             aw = ""
             while aw.lower() not in ["y", "yes", "n", "no"]:
@@ -461,31 +480,31 @@ class WebQQ(object):
         self.update_friend()
 
     def _hash(self):
-        a = str(self.qid)
-        e = self.ptwebqq
-        l = len(e)
-        # 将qq号码转换成整形列表
-        b, k, d = 0, -1, 0
-        for d in a:
-            d = int(d)
-            b += d
-            b %= l
-            f = 0
-            if b + 4 > l:
-                g = 4 + b - l
-                for h in range(4):
-                    f |= h < g and (
-                        ord(e[b + h]) & 255) << (3 - h) * 8 or (
-                            ord(e[h - g]) & 255) << (3 - h) * 8
-            else:
-                for h in range(4):
-                    f |= (ord(e[b + h]) & 255) << (3 - h) * 8
-            k ^= f
-        c = [k >> 24 & 255, k >> 16 & 255, k >> 8 & 255, k & 255]
-        import string
-        k = list(string.digits) + ['A', 'B', 'C', 'D', 'E', 'F']
-        d = [k[b >> 4 & 15] + k[b & 15] for b in c]
-        return ''.join(d)
+        """  获取列表时的Hash """
+        return _hash.webqq_hash(self.qid, self.ptwebqq)
+        # l = len(e)
+        # # 将qq号码转换成整形列表
+        # b, k, d = 0, -1, 0
+        # for d in a:
+        #     d = int(d)
+        #     b += d
+        #     b %= l
+        #     f = 0
+        #     if b + 4 > l:
+        #         g = 4 + b - l
+        #         for h in range(4):
+        #             f |= h < g and (
+        #                 ord(e[b + h]) & 255) << (3 - h) * 8 or (
+        #                     ord(e[h - g]) & 255) << (3 - h) * 8
+        #     else:
+        #         for h in range(4):
+        #             f |= (ord(e[b + h]) & 255) << (3 - h) * 8
+        #     k ^= f
+        # c = [k >> 24 & 255, k >> 16 & 255, k >> 8 & 255, k & 255]
+        # import string
+        # k = list(string.digits) + ['A', 'B', 'C', 'D', 'E', 'F']
+        # d = [k[b >> 4 & 15] + k[b & 15] for b in c]
+        # return ''.join(d)
 
 
     def update_friend(self, resp = None):
@@ -508,15 +527,29 @@ class WebQQ(object):
 
         callback = self.update_friend
 
-        if not resp:
+        if resp is None:
+            self.poll_stoped = False           # 可以开始轮询消息
             self.http.post(url, params, headers = headers, callback = callback)
         else:
             data = json.loads(resp.body)
+            if data.get("retcode") != 0:
+                self.status_callback(False, u"好友列表加载失败, 错误代码:{0}"
+                                     .format(data.get("retcode")))
+                return self.check()
+
             lst = data.get("result", {}).get("info", [])
             for info in lst:
                 uin = info.get("uin")
                 self.friend_info[uin] = info
+
+            marknames = data.get("result", {}).get("marknames", [])
+            [self.mark_to_uin.update({minfo.get("markname"): minfo.get("uin")})
+             for minfo in marknames]
+
             logging.debug("加载好友信息 {0!r}".format(self.friend_info))
+            logging.info(data)
+            if self.status_callback:
+                self.status_callback(True)
             self.update_group()
 
             self.http.post(url, params, headers = self.base_header,
@@ -650,6 +683,8 @@ class WebQQ(object):
 
     def handle_msg(self, resp):
         """ 处理消息 """
+        if self.poll_stoped:
+            return
         self.poll()
         if not resp.body:
             return
@@ -659,7 +694,7 @@ class WebQQ(object):
             msg = json.loads(data)
             if msg.get("retcode") in [121, 100006]:
                 logging.error(u"获取消息异常 {0!r}".format(data))
-                sys.exit()   # 退出重启
+                self.check()
                 return
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
@@ -687,9 +722,10 @@ class WebQQ(object):
         if not self.poll_and_heart:
             self.poll_and_heart = True
 
-        t = threading.Thread(name="heartThead#1", target= self._heartbeat)
-        t.setDaemon(True)
-        t.start()
+        self.hThread = threading.Thread(name="heartThead#1",
+                                        target= self._heartbeat)
+        self.hThread.setDaemon(True)
+        self.hThread.start()
 
 
     def _heartbeat(self):
@@ -703,7 +739,8 @@ class WebQQ(object):
 
         while True:
             try:
-                self.http.get(url, params, callback = callback)
+                self.http.get(url, params, callback = callback, connect_timeout = 1.0,
+                              request_timeout = 1.0)
             except:
                 pass
             i += 1
@@ -799,7 +836,7 @@ class WebQQ(object):
                               callback = callback, delay = delay)
 
 
-    def send_buddy_msg(self, to_uin, content):
+    def send_buddy_msg(self, to_uin, content, callback = None):
         """ 发送好友消息
         URL:
             http://d.web2.qq.com/channel/send_buddy_msg2
@@ -836,14 +873,16 @@ class WebQQ(object):
         headers = {"Origin": "http://d.web2.qq.com"}
         headers.update(self.base_header)
         delay, n = self.get_delay(content)
-        def callback(resp):
+        def _callback(resp):
             logging.info(u"发送好友消息 {0} 给 {1} 成功".format(content, to_uin))
+            if callback:
+                callback(True)
             self.last_msg_numbers -= n
             self.last_msg_time = time.time()
 
         logging.info(u"发送好友消息 {0} 给 {1} ...".format(content, to_uin))
         self.http.post(url, params, headers = headers, delay = delay,
-                              callback = callback)
+                              callback = _callback)
 
 
     def send_group_msg(self, group_uin, content):
@@ -973,8 +1012,21 @@ class WebQQ(object):
         self.get_login_sig()
         self.http.start()
 
-    def stop(self):
+    def real_stop(self):
         self.http.stop()
+
+    def stop(self):
+        self.stop_poll = True
+
+    def send_msg_with_markname(self, markname, message, callback):
+        """ 使用备注发送消息
+        """
+        uin = self.mark_to_uin.get(markname)
+        if not uin:
+            return False
+
+        self.send_buddy_msg(uin, message, callback)
+        return True
 
 
 def run_daemon(callback, args = (), kwargs = {}):
