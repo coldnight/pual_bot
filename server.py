@@ -94,7 +94,8 @@ class CheckImgAPIHandler(BaseHandler):
                 self.write({"status":False, "message":u"验证码过期"})
                 self.webqq.check()
             else:
-                self.write({"status":True, "require":True, "url":"/check"})
+                url = "http://{0}/check".format(self.request.host)
+                self.write({"status":True, "require":True, "url":url})
             return
         self.write({"status":True, "require":False})
 
