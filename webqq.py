@@ -515,7 +515,7 @@ class WebQQ(object):
         # return ''.join(d)
 
 
-    def update_friend(self, resp = None):
+    def update_friend(self, resp = None, call_status = True):
         """ 更新好友列表
         URL:
             http://s.web2.qq.com/api/get_user_friends2
@@ -540,7 +540,7 @@ class WebQQ(object):
             self.http.post(url, params, headers = headers, callback = callback)
         else:
             data = json.loads(resp.body)
-            if data.get("retcode") != 0:
+            if data.get("retcode") != 0 and call_status:
                 self.status_callback(False, u"好友列表加载失败, 错误代码:{0}"
                                      .format(data.get("retcode")))
                 return self.check()
@@ -556,12 +556,13 @@ class WebQQ(object):
 
             logging.debug("加载好友信息 {0!r}".format(self.friend_info))
             logging.info(data)
-            if self.status_callback:
+            if self.status_callback and call_status:
                 self.status_callback(True)
             self.update_group()
 
             self.http.post(url, params, headers = self.base_header,
-                                  delay = 3600, callback = callback)
+                           delay = 3600, callback = callback,
+                           kwargs = {"call_status":False})
 
 
     def update_group(self, resp = None):
