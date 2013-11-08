@@ -163,6 +163,10 @@ class MessageDispatch(object):
 
         if content.startswith(">>>"):
             body = content.lstrip(">").lstrip(" ")
+            bodys = []
+            for b in body.replace("\r\n", "\n").split("\n"):
+                bodys.append(b.lstrip(">>>"))
+            body = "\n".join(bodys)
             self.cmd.shell(from_uin, body, send_msg)
             return
 

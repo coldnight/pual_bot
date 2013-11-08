@@ -131,11 +131,12 @@ class WebQQ(object):
         """ 模拟JS登录之前的回调, 保存昵称 """
         if int(scode) == 0:
             logging.info("从Cookie中获取ptwebqq的值")
+            old_value = self.ptwebqq
             try:
                 self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
             except:
-                logging.error("从Cookie中获取ptwebqq的值失败")
-                return self.check()
+                logging.error("从Cookie中获取ptwebqq的值失败, 使用旧值尝试")
+                self.ptwebqq = old_value
             self.logined = True
         elif int(scode) == 4:
             logging.error(msg)
@@ -221,6 +222,14 @@ class WebQQ(object):
         self.check()
 
 
+    def clean(self):
+        if os.path.exists("lock"):
+            os.remove("lock")
+
+        if os.path.exists("wait"):
+            os.remove("wait")
+
+
 
     def check(self):
         """ 检查是否需要验证码
@@ -240,9 +249,7 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
-        with open("lock", 'w'):
-            pass
-
+        self.clean()
         self.poll_stoped = True   # 检查时停止轮询消息
         logging.info(u"检查是否需要验证码...")
         #url = "https://ssl.ptlogin2.qq.com/check"
@@ -365,6 +372,9 @@ class WebQQ(object):
         先检查是否需要验证码,不需要验证码则首先执行一次登录
         然后获取Cookie里的ptwebqq保存在实例里,供后面的接口调用
         """
+        with open("lock", 'w'):
+            pass
+
         if callback:
             self.status_callback = callback
         url = "https://ssl.ptlogin2.qq.com/login"
@@ -418,6 +428,7 @@ class WebQQ(object):
 
         if os.path.exists("lock"):
             os.remove("lock")
+
         logging.info("准备完毕, 开始登录")
         self.login()
 
@@ -471,7 +482,14 @@ class WebQQ(object):
 
     def login_back(self, resp):
         self.require_check_time = None
+        if not resp.body:
+            logging.error(u"没有获取到数据, 登录失败")
+            if self.status_callback:
+                self.status_callback(False, "登录失败 没有数据返回")
+            return self.check()
+
         data = json.loads(resp.body)
+
         if data.get("retcode") != 0:
             if self.status_callback:
                 self.status_callback(False, "登录失败 {0}".format(data))
