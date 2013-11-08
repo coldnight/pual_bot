@@ -130,12 +130,12 @@ class WebQQ(object):
     def ptuiCB(self, scode, r, url, status, msg, nickname = None):
         """ 模拟JS登录之前的回调, 保存昵称 """
         if int(scode) == 0:
-            if not self.ptwebqq:
-                logging.info("从Cookie中获取ptwebqq的值")
-                try:
-                    self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
-                except:
-                    return self.check()
+            logging.info("从Cookie中获取ptwebqq的值")
+            try:
+                self.ptwebqq = self.http.cookie['.qq.com']['/']['ptwebqq'].value
+            except:
+                logging.error("从Cookie中获取ptwebqq的值失败")
+                return self.check()
             self.logined = True
         elif int(scode) == 4:
             logging.error(msg)
@@ -279,6 +279,7 @@ class WebQQ(object):
                 pwd = self.handle_pwd(r, ccode.upper(), uin)
                 self.before_login(pwd)
             else:
+                os.remove("wait")
                 logging.info(u"请打开http://{0}:{1} 提交验证码"
                              .format(HTTP_LISTEN, HTTP_PORT))
                 self.handler.r = r
@@ -694,8 +695,7 @@ class WebQQ(object):
             msg = json.loads(data)
             if msg.get("retcode") in [121, 100006]:
                 logging.error(u"获取消息异常 {0!r}".format(data))
-                self.check()
-                return
+                exit()
             logging.info(u"获取消息: {0!r}".format(msg))
             self.msg_dispatch.dispatch(msg)
         except ValueError:
@@ -1027,6 +1027,26 @@ class WebQQ(object):
 
         self.send_buddy_msg(uin, message, callback)
         return True
+
+
+    def accept_and_set_mark(self, uin, qq_num):
+        """ 确认添加并更改备注
+        """
+        url = "http://s.web2.qq.com/api/allow_and_add2"
+        params = {"r":json.dumps({"account":qq_num, "gid":0, "mname":qq_num,
+                  "vfwebqq":self.vfwebqq})}
+        headers = {"Referer":"http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1"}
+
+        def _callback(resp):
+            data = json.loads(resp.body)
+            if data.get("retcode") == 0:
+                logging.info(u"添加 {0} 成功".format(qq_num))
+                self.mark_to_uin[uin] = qq_num
+            else:
+                logging.info(u"添加 {0} 失败".format(qq_num))
+
+        self.http.post(url, params, headers = headers, callback = _callback)
+
 
 
 def run_daemon(callback, args = (), kwargs = {}):

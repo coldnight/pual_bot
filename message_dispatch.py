@@ -181,18 +181,6 @@ class MessageDispatch(object):
                 self.webqq.update_friend()
                 return
 
-        """
-        nickname = self.webqq.nickname.decode('utf-8').lower()
-        if content.lower().startswith(nickname) \
-           or content.lower().endswith(nickname):
-            content = content.lower().strip(nickname).strip()
-            if content:
-                self.cmd.talk(content, send_msg)
-            return
-        """
-
-
-
 
         if u"提问的智慧" in content:
             bodys = []
@@ -229,3 +217,9 @@ class MessageDispatch(object):
                     self.webqq.check()
                 if m.get("poll_type") == "sess_message":
                     self.handle_qq_message(m, True)
+                if m.get("poll_type") == "system_message":
+                    value = m.get('value')
+                    if value.get("type") == "added_buddy_sig":
+                        uin = value.get("from_uin")
+                        qq_num = value.get("account")
+                        self.webqq.accept_and_set_mark(uin, qq_num)

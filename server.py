@@ -87,17 +87,29 @@ class CheckHandler(BaseHandler):
 
 
 class CheckImgAPIHandler(BaseHandler):
+    is_exit = False
     def get(self):
+        if os.path.exists("wait"):
+            self.write({"status":False, "wait":True})
+            return
+
         if os.path.exists(self.webqq.checkimg_path):
             if self.webqq.require_check_time and \
             time.time() - self.webqq.require_check_time > 900:
                 self.write({"status":False, "message":u"验证码过期"})
-                self.webqq.check()
+                self.is_exit = True
             else:
                 url = "http://{0}/check".format(self.request.host)
                 self.write({"status":True, "require":True, "url":url})
             return
         self.write({"status":True, "require":False})
+
+
+    def on_connection_close(self):
+        if self.is_exit:
+            with open("wait", "w"):
+                pass
+            exit()
 
 
 class SendMessageHandler(BaseHandler):
