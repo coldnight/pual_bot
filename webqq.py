@@ -240,6 +240,9 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
+        with open("lock", 'w'):
+            pass
+
         self.poll_stoped = True   # 检查时停止轮询消息
         logging.info(u"检查是否需要验证码...")
         #url = "https://ssl.ptlogin2.qq.com/check"
@@ -409,6 +412,9 @@ class WebQQ(object):
     def get_location1(self, resp):
         if os.path.exists(self.checkimg_path):
             os.remove(self.checkimg_path)
+
+        if os.path.exists("lock"):
+            os.remove("lock")
         logging.info("准备完毕, 开始登录")
         self.login()
 

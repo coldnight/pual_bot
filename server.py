@@ -75,6 +75,11 @@ class CheckHandler(BaseHandler):
 
     @asynchronous
     def post(self):
+        if not os.path.exists(self.webqq.checkimg_path) or\
+           os.path.exists("lock"):
+            self.write({"status":False, "message": u"暂不需要验证码"})
+            return self.finish()
+
         code = self.get_argument("vertify")
         code = code.strip().lower().encode('utf-8')
         self.webqq.check_code = code
@@ -92,6 +97,9 @@ class CheckImgAPIHandler(BaseHandler):
         if os.path.exists("wait"):
             self.write({"status":False, "wait":True})
             return
+
+        if os.path.exists("lock"):
+            return self.write({"status":True, "require":False})
 
         if os.path.exists(self.webqq.checkimg_path):
             if self.webqq.require_check_time and \
