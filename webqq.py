@@ -240,6 +240,9 @@ class WebQQ(object):
             ptui_checkVC('0','!PTH','\x00\x00\x00\x00\x64\x74\x8b\x05');
             第一个参数表示状态码, 0 不需要验证, 第二个为验证码, 第三个为uin
         """
+        with open("lock", 'w'):
+            pass
+
         self.poll_stoped = True   # 检查时停止轮询消息
         logging.info(u"检查是否需要验证码...")
         #url = "https://ssl.ptlogin2.qq.com/check"
@@ -314,6 +317,7 @@ class WebQQ(object):
             return
 
         r, vcode, uin = eval(data.strip().rstrip(";"))
+        logging.info("R:{0} vcode:{1} uin:{2}".format(r, vcode, uin))
         if int(r) == 0:
             logging.info("验证码检查完毕, 不需要验证码")
             password = self.handle_pwd(r, vcode, uin)
@@ -409,6 +413,9 @@ class WebQQ(object):
     def get_location1(self, resp):
         if os.path.exists(self.checkimg_path):
             os.remove(self.checkimg_path)
+
+        if os.path.exists("lock"):
+            os.remove("lock")
         logging.info("准备完毕, 开始登录")
         self.login()
 
@@ -539,11 +546,15 @@ class WebQQ(object):
             self.poll_stoped = False           # 可以开始轮询消息
             self.http.post(url, params, headers = headers, callback = callback)
         else:
+            if not resp.body:
+                if self.status_callback:
+                    self.status_callback(False, u"更新好友信息失败")
+                return
             data = json.loads(resp.body)
             if data.get("retcode") != 0 and call_status:
                 self.status_callback(False, u"好友列表加载失败, 错误代码:{0}"
                                      .format(data.get("retcode")))
-                return self.check()
+                return
 
             lst = data.get("result", {}).get("info", [])
             for info in lst:

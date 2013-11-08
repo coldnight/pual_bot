@@ -58,6 +58,7 @@ class CImgHandler(BaseHandler):
 
 
 class CheckHandler(BaseHandler):
+    is_exit = False
     def get(self):
         path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                             "check.jpg")
@@ -75,6 +76,11 @@ class CheckHandler(BaseHandler):
 
     @asynchronous
     def post(self):
+        if not os.path.exists(self.webqq.checkimg_path) or\
+           os.path.exists("lock"):
+            self.write({"status":False, "message": u"暂不需要验证码"})
+            return self.finish()
+
         code = self.get_argument("vertify")
         code = code.strip().lower().encode('utf-8')
         self.webqq.check_code = code
@@ -83,7 +89,12 @@ class CheckHandler(BaseHandler):
 
     def on_callback(self, status, msg = None):
         self.write({"status":status, "message":msg})
+        self.is_exit = not status
         self.finish()
+
+    def on_connection_close(self):
+        if self.is_exit:
+            exit()
 
 
 class CheckImgAPIHandler(BaseHandler):
@@ -92,6 +103,9 @@ class CheckImgAPIHandler(BaseHandler):
         if os.path.exists("wait"):
             self.write({"status":False, "wait":True})
             return
+
+        if os.path.exists("lock"):
+            return self.write({"status":True, "require":False})
 
         if os.path.exists(self.webqq.checkimg_path):
             if self.webqq.require_check_time and \

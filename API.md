@@ -20,6 +20,7 @@
 
     {
         status   状态             // False为验证码过期需等待
+        wait     是否需要等待验证码
         requrie  是否需要验证吗
         message  消息
         url      验证码url
