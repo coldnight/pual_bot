@@ -58,6 +58,7 @@ class CImgHandler(BaseHandler):
 
 
 class CheckHandler(BaseHandler):
+    is_exit = False
     def get(self):
         path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
                             "check.jpg")
@@ -88,7 +89,12 @@ class CheckHandler(BaseHandler):
 
     def on_callback(self, status, msg = None):
         self.write({"status":status, "message":msg})
+        self.is_exit = not status
         self.finish()
+
+    def on_connection_close(self):
+        if self.is_exit:
+            exit()
 
 
 class CheckImgAPIHandler(BaseHandler):
