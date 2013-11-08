@@ -139,6 +139,8 @@ class WebQQ(object):
             self.logined = True
         elif int(scode) == 4:
             logging.error(msg)
+            if self.status_callback:
+                self.status_callback(False, msg)
             self.check()
         else:
             logging.error(u"server response: {0}".format(msg.decode('utf-8')))
@@ -188,8 +190,12 @@ class WebQQ(object):
 
 
     def get_login_sig(self, handler = None):
+
         self.handler = handler # 启用HTTP_CHECKIMG的Handler
         self.stop_poll_heartbeat = False
+
+        with open("wait", 'w'):
+            pass
 
         logging.info("获取 login_sig...")
         url = "https://ui.ptlogin2.qq.com/cgi-bin/login"
@@ -279,7 +285,8 @@ class WebQQ(object):
                 pwd = self.handle_pwd(r, ccode.upper(), uin)
                 self.before_login(pwd)
             else:
-                os.remove("wait")
+                if os.path.exists("wait"):
+                    os.remove("wait")
                 logging.info(u"请打开http://{0}:{1} 提交验证码"
                              .format(HTTP_LISTEN, HTTP_PORT))
                 self.handler.r = r
@@ -1033,12 +1040,15 @@ class WebQQ(object):
         """ 确认添加并更改备注
         """
         url = "http://s.web2.qq.com/api/allow_and_add2"
-        params = {"r":json.dumps({"account":qq_num, "gid":0, "mname":qq_num,
-                  "vfwebqq":self.vfwebqq})}
-        headers = {"Referer":"http://s.web2.qq.com/proxy.html?v=20110412001&callback=1&id=1"}
+        params = [("r","{\"account\":%d, \"gid\":0, \"mname\":\"%d\","
+                    " \"vfwebqq\":\"%s\"}" % (qq_num, qq_num, self.vfwebqq)),]
+        headers = {"Origin":"http://s.web2.qq.com"}
+        headers.update(self.base_header)
 
         def _callback(resp):
             data = json.loads(resp.body)
+            logging.info(data)
+            logging.info(params)
             if data.get("retcode") == 0:
                 logging.info(u"添加 {0} 成功".format(qq_num))
                 self.mark_to_uin[uin] = qq_num

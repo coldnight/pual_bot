@@ -219,7 +219,7 @@ class MessageDispatch(object):
                     self.handle_qq_message(m, True)
                 if m.get("poll_type") == "system_message":
                     value = m.get('value')
-                    if value.get("type") == "added_buddy_sig":
+                    if value.get("type") == "verify_required":
                         uin = value.get("from_uin")
                         qq_num = value.get("account")
                         self.webqq.accept_and_set_mark(uin, qq_num)
