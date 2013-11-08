@@ -547,7 +547,7 @@ class WebQQ(object):
             self.http.post(url, params, headers = headers, callback = callback)
         else:
             if not resp.body:
-                if self.status_callback:
+                if self.status_callback and call_status:
                     self.status_callback(False, u"更新好友信息失败")
                 return
             data = json.loads(resp.body)
