@@ -321,8 +321,8 @@ class WebQQ(object):
         if int(r) == 0:
             logging.info("验证码检查完毕, 不需要验证码")
             password = self.handle_pwd(r, vcode, uin)
-            self.before_login(password)
             self.check_code = vcode
+            self.before_login(password)
         else:
             logging.warn("验证码检查完毕, 需要验证码")
             self.get_check_img(r, vcode, uin)
@@ -386,6 +386,8 @@ class WebQQ(object):
                             "ifyimg=1&s_url=http%3A%2F%2Fweb.qq.com%2Fl"
                             "oginproxy.html&f_url=loginerroralert&stron"
                             "g_login=1&login_state=10&t=20130221001")
+        else:
+            headers.update(Referfer = "https://ui.ptlogin2.qq.com/cgi-bin/login?daid=164&target=self&style=5&mibao_css=m_webqq&appid=1003903&enable_qlogin=0&no_verifyimg=1&s_url=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html&f_url=loginerroralert&strong_login=1&login_state=10&t=20130903001")
         logging.info("检查完毕, 开始登录前准备")
         self.http.get(url, params, headers = headers, callback = self.login0)
 
