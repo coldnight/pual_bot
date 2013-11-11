@@ -194,7 +194,7 @@ class MessageDispatch(object):
         if typ == "g":
             if content.startswith(self.webqq.nickname.lower().strip()) or \
                content.endswith(self.webqq.nickname.lower().strip()):
-                self.simsimi.talk(content, send_msg)
+                self.simsimi.talk(content.strip(self.webqq.nickname), send_msg)
 
 
         if u"提问的智慧" in content:
