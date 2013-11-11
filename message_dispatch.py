@@ -28,6 +28,11 @@ from functools import partial
 from command import Command
 from config import MAX_RECEIVER_LENGTH, Set_Password
 
+try:
+    from config import AUTO_ACCEPT
+except ImportError:
+    AUTO_ACCEPT = True
+
 from _simsimi import SimSimiTalk
 
 
@@ -229,7 +234,7 @@ class MessageDispatch(object):
                     self.handle_qq_message(m, True)
                 if m.get("poll_type") == "system_message":
                     value = m.get('value')
-                    if value.get("type") == "verify_required":
+                    if value.get("type") == "verify_required" and AUTO_ACCEPT:
                         uin = value.get("from_uin")
                         qq_num = value.get("account")
                         self.webqq.accept_and_set_mark(uin, qq_num)

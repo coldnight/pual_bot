@@ -27,6 +27,12 @@ QQ = 123456
 # QQ 密码
 QQ_PWD = ""
 
+
+# 自动同意好友申请
+# 需要将身份验证设置为"需要验证信息"
+# 好友备注名将自动改为好友的QQ号
+AUTO_ACCEPT = True
+
 # 下面是有道辞典需要的api, 可以到下面网站申请一个key和keyfrom
 # http://fanyi.youdao.com/openapi
 YOUDAO_KEY = 1234567890
