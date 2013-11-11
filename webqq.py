@@ -148,7 +148,7 @@ class WebQQ(object):
             self.check()
 
         if nickname:
-            self.nickname = nickname
+            self.nickname = nickname.decode('utf-8')
 
 
     def get_group_member_nick(self, gcode, uin):
