@@ -28,6 +28,8 @@ from functools import partial
 from command import Command
 from config import MAX_RECEIVER_LENGTH, Set_Password
 
+from _simsimi import SimSimiTalk
+
 
 code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
               'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
@@ -58,6 +60,7 @@ class MessageDispatch(object):
     """ 消息调度器 """
     def __init__(self, webqq):
         self.webqq = webqq
+        self.simsimi = SimSimiTalk(self.webqq.http)
         self.cmd = Command()
 
     def send_msg(self, content, callback, nick = None):
@@ -175,15 +178,18 @@ class MessageDispatch(object):
                 password, signature = content.strip(u"设置签名:").split("|")
                 self.webqq.set_signature(signature, password, send_msg)
                 return
-            """
             if content:
-                self.cmd.talk(content, send_msg)
+                self.simsimi.talk(content, send_msg)
             return
-            """
 
             if content.startswith("update") and content.endswith(Set_Password):
                 self.webqq.update_friend()
                 return
+
+        if typ == "g":
+            if content.startswith(self.webqq.nickname.lower().strip()) or \
+               content.endswith(self.webqq.nickname.lower().strip()):
+                self.simsimi.talk(content, send_msg)
 
 
         if u"提问的智慧" in content:
