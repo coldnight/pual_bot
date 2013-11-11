@@ -4,3 +4,6 @@ clean:
 
 restart:
 	kill `cat pid.pid`; python webqq.py && tail -f log.log
+
+stop:
+	kill `cat pid.pid`
