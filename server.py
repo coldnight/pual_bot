@@ -64,6 +64,10 @@ class CheckHandler(BaseHandler):
                             "check.jpg")
         if not os.path.exists(path):
             html = "暂不需要验证码"
+        elif os.path.exists("wait"):
+            html = u"等待验证码"
+        elif os.path.exists("lock"):
+            html = u"已经输入验证码, 等待验证"
         else:
             html = """
             <img src="/check" />

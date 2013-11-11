@@ -329,6 +329,7 @@ class WebQQ(object):
             logging.info("验证码检查完毕, 不需要验证码")
             password = self.handle_pwd(r, vcode, uin)
             self.check_code = vcode
+            self.clean()
             self.before_login(password)
         else:
             logging.warn("验证码检查完毕, 需要验证码")
