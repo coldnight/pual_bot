@@ -153,6 +153,4 @@ app.listen(HTTP_PORT, address = HTTP_LISTEN)
 
 def http_server_run(webqq):
     BaseHandler.webqq = webqq
-    webqq.get_login_sig(BaseHandler)
-    IOLoop.instance().start()
-
+    webqq.run(BaseHandler)
