@@ -1063,6 +1063,7 @@ class WebQQ(object):
         """
         uin = self.mark_to_uin.get(markname)
         if not uin:
+            callback(False, u"好友不存在")
             return False
 
         self.send_buddy_msg(uin, message, callback)
