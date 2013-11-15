@@ -6,10 +6,16 @@
 #   Date    :   13/11/14 13:23:49
 #   Desc    :
 #
+from __future__ import print_function
+
+import os
+import sys
 import config
 import logging
+import atexit
 
 from twqq.client import WebQQClient
+from twqq.requests import kick_message_handler, PollMessageRequest
 from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
@@ -65,6 +71,11 @@ class Client(WebQQClient):
                 self.verify_callback(False, args[3])
 
 
+    @kick_message_handler
+    def handle_kick(self, message):
+        sys.exit()    # 退出重启
+
+
     @system_message_handler
     def handle_friend_add(self, mtype, from_uin, account, message):
         if mtype == "verify_required":
@@ -78,6 +89,13 @@ class Client(WebQQClient):
     @buddy_message_handler
     def handle_buddy_message(self, from_uin, content, source):
         self.hub.send_buddy_msg(from_uin, content)
+
+
+    @register_request_handler(PollMessageRequest)
+    def handle_qq_errcode(self, request, resp, data):
+        if data and data.get("retcode") in [121, 100006]:
+            logger.error(u"获取登出消息 {0!r}".format(data))
+            exit()
 
 
     def send_msg_with_markname(self, markname, message, callback = None):
@@ -109,9 +127,74 @@ class Client(WebQQClient):
         super(Client, self).run()
 
 
-if __name__ == "__main__":
+
+
+def run_daemon(callback, args = (), kwargs = {}):
+    path = os.path.abspath(os.path.dirname(__file__))
+    def _fork(num):
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as e:
+            sys.stderr.write("fork #%d faild:%d(%s)\n" % (num, e.errno,
+                                                          e.strerror))
+            sys.exit(1)
+
+
+    _fork(1)
+
+    os.setsid()
+    # os.chdir("/")
+    os.umask(0)
+
+    _fork(2)
+    pp = os.path.join(path, "pid.pid")
+
+    with open(pp, 'w') as f:
+        f.write(str(os.getpid()))
+
+    lp = os.path.join(path, "log.log")
+    lf = open(lp, 'a')
+    os.dup2(lf.fileno(), sys.stdout.fileno())
+    os.dup2(lf.fileno(), sys.stderr.fileno())
+    callback(*args, **kwargs)
+
+    def _exit():
+        os.remove(pp)
+        lf.close()
+
+    atexit.register(_exit)
+
+
+def main():
     webqq = Client(config.QQ, config.QQ_PWD)
-    if getattr(config, "HTTP_CHECKIMG", False):
-        http_server_run(webqq)
+    try:
+        if getattr(config, "HTTP_CHECKIMG", False):
+            http_server_run(webqq)
+        else:
+            webqq.run()
+    except KeyboardInterrupt:
+        print("Exiting...", file =  sys.stderr)
+    except SystemExit:
+        os.execv(sys.executeable, [sys.executable] + sys.argv)
+
+
+
+if __name__ == "__main__":
+    from logging.handlers import RotatingFileHandler
+    for name in ["twqq", "client"]:
+        logger = logging.getLogier(name)
+        logger.setLevel(logging.DEBUG if config.DEBUG else logging.NOTSET)
+        if not config.DEBUG:
+            file_handler = RotatingFileHandler(
+                getattr(config, "LOG_PATH", "log.log"),
+                maxBytes = getattr(config, "LOG_MAX_SIZE", 5 * 1024 * 1024),
+                backupCount = getattr(config, "LOG_BACKUPCOUNT", 10)
+            )
+            logger.addHandler(file_handler)
+
+    if not config.DEBUG :
+        run_daemon(main)
     else:
-        webqq.run()
+        main()
