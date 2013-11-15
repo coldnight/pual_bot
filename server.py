@@ -114,7 +114,7 @@ class CheckImgAPIHandler(BaseHandler):
         if self.webqq.verify_img_path and \
            os.path.exists(self.webqq.verify_img_path):
             if self.webqq.hub.require_check_time and \
-            time.time() - self.webqq.require_check_time > 900:
+            time.time() - self.webqq.hub.require_check_time > 900:
                 self.write({"status":False, "message":u"验证码过期"})
                 self.is_exit = True
             else:

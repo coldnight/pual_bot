@@ -8,11 +8,15 @@
 #
 from __future__ import print_function
 
+import re
 import os
 import sys
 import config
-import logging
 import atexit
+import logging
+
+from functools import partial
+
 
 from twqq.client import WebQQClient
 from twqq.requests import kick_message_handler, PollMessageRequest
@@ -21,6 +25,8 @@ from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
 
 from server import http_server_run
+from _simsimi import SimSimiTalk
+from command import Command
 
 
 logger = logging.getLogger("client")
@@ -28,6 +34,13 @@ logger = logging.getLogger("client")
 class Client(WebQQClient):
     verify_img_path = None
     message_requests = {}
+    simsimi = SimSimiTalk()
+    command = Command()
+
+    URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
+                        "?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)",
+                        re.UNICODE)
+
     def handle_verify_code(self, path, r, uin):
         self.verify_img_path = path
 
@@ -63,12 +76,12 @@ class Client(WebQQClient):
                 self.verify_callback(False, "没有数据返回验证失败, 尝试重新登录")
                 return
 
-            args = request.get_back_args()
+            args = request.get_back_args(data)
             scode = int(args[0])
             if scode == 0:
                 self.verify_callback(True)
             else:
-                self.verify_callback(False, args[3])
+                self.verify_callback(False, args[4])
 
 
     @kick_message_handler
@@ -84,11 +97,113 @@ class Client(WebQQClient):
     @group_message_handler
     def handle_group_message(self, member_nick, content, group_code,
                              send_uin, source):
-        self.hub.send_group_msg(group_code, u"{0}: {1}".format(member_nick, content))
+        callback = partial(self.send_group_with_nick, member_nick, group_code)
+        self.handle_message(send_uin, content, callback)
+
+
+    def _handle_content_url(self, content, callback):
+        urls = self.URL_RE.findall(content)
+        if urls:
+            logging.info(u"从 {1} 中获取链接: {0!r}".format(urls, content))
+            for url in urls:
+                self.command.url_info(url, callback)
+            return True
+
+    def _paste_content(self, content, callback):
+        code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
+              'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
+              'jsp', 'lighttpd', 'lua', 'matlab', 'mysql', 'nginx',
+              'objectivec', 'perl', 'php', 'python', 'python3', 'ruby',
+              'scheme', 'smalltalk', 'smarty', 'sql', 'sqlite3', 'squid',
+              'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
+
+        if content.startswith("```"):
+            typ = content.split("\n")[0].lstrip("`").strip().lower()
+            if typ not in code_typs: typ = "text"
+            code = "\n".join(content.split("\n")[1:])
+            self.command.paste(code, callback, typ)
+            return True
+
+
+    def _handle_command(self, content, callback):
+        ABOUT_STR = u"\nAuthor    :   cold\nE-mail    :   wh_linux@126.com\n"\
+                u"HomePage  :   http://t.cn/zTocACq\n"\
+                u"Project@  :   http://git.io/hWy9nQ"
+        HELP_DOC = u"http://p.vim-cn.com/cbc2/"
+        ping_cmd = "ping"
+        about_cmd = "about"
+        help_cmd = "help"
+        commands = [ping_cmd, about_cmd, help_cmd]
+        command_resp = {ping_cmd:u"小的在", about_cmd:ABOUT_STR,
+                        help_cmd:HELP_DOC}
+
+        if content.encode("utf-8").strip().lower() in commands:
+            body = command_resp[content.encode("utf-8").strip().lower()]
+            if not isinstance(body, (str, unicode)):
+                body = body()
+            callback(body)
+            return True
+
+
+    def handle_message(self, from_uin, content, callback, type="g"):
+        content = content.strip()
+        if self._handle_content_url(content, callback):
+            return
+
+        if self._paste_content(content, callback):
+            return
+
+        if self._handle_command(content, callback):
+            return
+
+        if self._handle_trans(content, callback):
+            return
+
+        if self._handle_run_code(from_uin, content, callback):
+            return
+
+        self._handle_simsimi(content, callback, type)
+
+
+    def _handle_trans(self, content, callback):
+        if content.startswith("-tr"):
+            if content.startswith("-trw"):
+                web = True
+                st = "-trw"
+            else:
+                web = False
+                st = "-tr"
+            body = content.lstrip(st).strip()
+            self.command.cetr(body, callback, web)
+            return True
+
+    def _handle_run_code(self, from_uin, content, callback):
+        if content.startswith(">>>"):
+            body = content.lstrip(">").lstrip(" ")
+            bodys = []
+            for b in body.replace("\r\n", "\n").split("\n"):
+                bodys.append(b.lstrip(">>>"))
+            body = "\n".join(bodys)
+            self.command.shell(from_uin, body, callback)
+            return True
+
+    def _handle_simsimi(self, content, callback, typ):
+        if typ == "g":
+            if content.startswith(self.hub.nickname.lower().strip()) or \
+               content.endswith(self.hub.nickname.lower().strip()):
+                self.simsimi.talk(content.strip(self.hub.nickname), callback)
+        else:
+            self.simsimi.talk(content.strip(self.hub.nickname), callback)
+
+
+    def send_group_with_nick(self, nick, group_code, content):
+        content = u"{0}: {1}".format(nick, content)
+        self.hub.send_group_msg(group_code, content)
 
     @buddy_message_handler
     def handle_buddy_message(self, from_uin, content, source):
-        self.hub.send_buddy_msg(from_uin, content)
+        callback = partial(self.hub.send_buddy_msg, from_uin)
+        self.handle_message(from_uin, content, callback, 'b')
 
 
     @register_request_handler(PollMessageRequest)
@@ -177,14 +292,14 @@ def main():
     except KeyboardInterrupt:
         print("Exiting...", file =  sys.stderr)
     except SystemExit:
-        os.execv(sys.executeable, [sys.executable] + sys.argv)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 
 if __name__ == "__main__":
     from logging.handlers import RotatingFileHandler
     for name in ["twqq", "client"]:
-        logger = logging.getLogier(name)
+        logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG if config.DEBUG else logging.NOTSET)
         if not config.DEBUG:
             file_handler = RotatingFileHandler(

@@ -21,7 +21,7 @@ class SimSimiTalk(object):
 
         if not http:
             self.http.set_user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/28.0.1500.71 Chrome/28.0.1500.71 Safari/537.36")
-            self.http.debug = getattr(config, "TRACE", True)
+            self.http.debug = getattr(config, "TRACE", False)
             self.http.validate_cert = False
             self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
 
