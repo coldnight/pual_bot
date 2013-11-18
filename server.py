@@ -40,7 +40,6 @@ class BaseHandler(RequestHandler):
     webqq = None
     r = None
     uin = None
-    next_callback = None
     is_login = False
 
 
@@ -48,8 +47,8 @@ class BaseHandler(RequestHandler):
 class CImgHandler(BaseHandler):
     def get(self):
         data = ""
-        if os.path.exists(self.webqq.checkimg_path):
-            with open(self.webqq.checkimg_path) as f:
+        if self.webqq.verify_img_path and os.path.exists(self.webqq.verify_img_path):
+            with open(self.webqq.verify_img_path) as f:
                 data = f.read()
 
         self.set_header("Content-Type", "image/jpeg")
@@ -60,36 +59,37 @@ class CImgHandler(BaseHandler):
 class CheckHandler(BaseHandler):
     is_exit = False
     def get(self):
-        path = os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                            "check.jpg")
-        if not os.path.exists(path):
-            html = "暂不需要验证码"
-        elif os.path.exists("wait"):
-            html = u"等待验证码"
-        elif os.path.exists("lock"):
-            html = u"已经输入验证码, 等待验证"
+        if self.webqq.verify_img_path:
+            path = self.webqq.verify_img_path
+            if not os.path.exists(path):
+                html = "暂不需要验证码"
+            elif self.webqq.hub.is_wait():
+                html = u"等待验证码"
+            elif self.webqq.hub.is_lock():
+                html = u"已经输入验证码, 等待验证"
+            else:
+                html = """
+                <img src="/check" />
+                <form action="/" method="POST">
+                    验证码:<input type="text" name="vertify" />
+                    <input type="submit" name="xx" value="提交" />
+                </form>
+                """
         else:
-            html = """
-            <img src="/check" />
-            <form action="/" method="POST">
-                验证码:<input type="text" name="vertify" />
-                <input type="submit" name="xx" value="提交" />
-            </form>
-            """
+            html = "暂不需要验证码"
         self.write(html)
 
     @asynchronous
     def post(self):
-        if not os.path.exists(self.webqq.checkimg_path) or\
-           os.path.exists("lock"):
+        if (self.webqq.verify_img_path and
+            not os.path.exists(self.webqq.verify_img_path)) or\
+           self.webqq.hub.is_lock():
             self.write({"status":False, "message": u"暂不需要验证码"})
             return self.finish()
 
         code = self.get_argument("vertify")
         code = code.strip().lower().encode('utf-8')
-        self.webqq.check_code = code
-        pwd = self.webqq.handle_pwd(self.r, code.upper(), self.uin)
-        self.next_callback(pwd, self.on_callback)
+        self.webqq.enter_verify_code(code, self.r, self.uin, self.on_callback)
 
     def on_callback(self, status, msg = None):
         self.write({"status":status, "message":msg})
@@ -104,16 +104,17 @@ class CheckHandler(BaseHandler):
 class CheckImgAPIHandler(BaseHandler):
     is_exit = False
     def get(self):
-        if os.path.exists("wait"):
+        if self.webqq.hub.is_wait():
             self.write({"status":False, "wait":True})
             return
 
-        if os.path.exists("lock"):
+        if self.webqq.hub.is_lock():
             return self.write({"status":True, "require":False})
 
-        if os.path.exists(self.webqq.checkimg_path):
-            if self.webqq.require_check_time and \
-            time.time() - self.webqq.require_check_time > 900:
+        if self.webqq.verify_img_path and \
+           os.path.exists(self.webqq.verify_img_path):
+            if self.webqq.hub.require_check_time and \
+            time.time() - self.webqq.hub.require_check_time > 900:
                 self.write({"status":False, "message":u"验证码过期"})
                 self.is_exit = True
             else:
@@ -153,6 +154,4 @@ app.listen(HTTP_PORT, address = HTTP_LISTEN)
 
 def http_server_run(webqq):
     BaseHandler.webqq = webqq
-    webqq.get_login_sig(BaseHandler)
-    IOLoop.instance().start()
-
+    webqq.run(BaseHandler)

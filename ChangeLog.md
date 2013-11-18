@@ -1,3 +1,7 @@
+## 2013-11-15
+* 将WebQQ协议提取成一个包: https://github.com/coldnight/twqq
+* 对代码进行重构
+
 ## 2013-11-04
 * 增加一个HTTP server用来通过浏览器输入验证码(配置见 ``config.py.example``)
 * 增加当需要验证码时发送邮件提醒(配置见 ``config.py.example``)
