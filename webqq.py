@@ -26,7 +26,7 @@ from twqq.requests import register_request_handler, BuddyMsgRequest
 
 from server import http_server_run
 from _simsimi import SimSimiTalk
-from command import Command
+from command import Command, send_notice_email
 
 
 logger = logging.getLogger("client")
@@ -56,6 +56,11 @@ class Client(WebQQClient):
 
             logger.info("请打开 http://{0}:{1} 输入验证码"
                         .format(config.HTTP_LISTEN, config.HTTP_PORT))
+            if getattr(config, "EMAIL_NOTICE", False):
+                if send_notice_email():
+                    logger.info("发送通知邮件成功")
+                else:
+                    logger.warning("发送通知邮件失败")
         else:
             logger.info(u"验证码本地路径为: {0}".format(self.hub.checkimg_path))
             check_code = None
