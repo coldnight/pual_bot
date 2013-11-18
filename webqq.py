@@ -23,6 +23,7 @@ from twqq.requests import kick_message_handler, PollMessageRequest
 from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
+from twqq.requests import Login2Request, FriendInfoRequest
 
 from server import http_server_run
 from _simsimi import SimSimiTalk
@@ -76,17 +77,40 @@ class Client(WebQQClient):
 
     @register_request_handler(BeforeLoginRequest)
     def handle_verify_check(self, request, resp, data):
-        if hasattr(self, "verify_callback") and callable(self.verify_callback):
-            if not data:
-                self.verify_callback(False, "没有数据返回验证失败, 尝试重新登录")
-                return
+        if not data:
+            self.handle_verify_callback(False, "没有数据返回验证失败, 尝试重新登录")
+            return
 
-            args = request.get_back_args(data)
-            scode = int(args[0])
-            if scode == 0:
-                self.verify_callback(True)
-            else:
-                self.verify_callback(False, args[4])
+        args = request.get_back_args(data)
+        scode = int(args[0])
+        if scode != 0:
+            self.handle_verify_callback(False, args[4])
+
+    def handle_verify_callback(self, status, msg = None):
+        if hasattr(self, "verify_callback") and callable(self.verify_callback):
+            self.verify_callback(status, msg)
+
+
+    @register_request_handler(Login2Request)
+    def handle_login_errorcode(self, request, resp, data):
+        if not resp.body:
+            return self.handle_verify_callback(False, u"没有数据返回, 尝试重新登录")
+
+        if data.get("retcode") != 0:
+            return self.handle_verify_callback(False, u"登录失败: {0}"
+                                        .format(data.get("retcode")))
+
+    @register_request_handler(FriendInfoRequest)
+    def handle_frind_info_erro(self, request, resp, data):
+        if not resp.body:
+            self.handle_verify_callback(False, u"获取好友列表失败")
+            return
+
+        if data.get("retcode") !=0:
+            self.handle_verify_callback(False, u"好友列表获取失败: {0}"
+                                        .format(data.get("retcode")))
+            return
+        self.handle_verify_callback(True)
 
 
     @kick_message_handler
@@ -217,6 +241,7 @@ class Client(WebQQClient):
         if data and data.get("retcode") in [121, 100006]:
             logger.error(u"获取登出消息 {0!r}".format(data))
             exit()
+
 
 
     def send_msg_with_markname(self, markname, message, callback = None):
