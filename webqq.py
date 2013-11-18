@@ -297,17 +297,14 @@ def main():
 
 
 if __name__ == "__main__":
-    from logging.handlers import RotatingFileHandler
-    for name in ["twqq", "client"]:
-        logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG if config.DEBUG else logging.NOTSET)
-        if not config.DEBUG:
-            file_handler = RotatingFileHandler(
-                getattr(config, "LOG_PATH", "log.log"),
-                maxBytes = getattr(config, "LOG_MAX_SIZE", 5 * 1024 * 1024),
-                backupCount = getattr(config, "LOG_BACKUPCOUNT", 10)
-            )
-            logger.addHandler(file_handler)
+    import tornado.log
+    from tornado.options import options
+
+    if not getattr(config, "DEBUG", False):
+        options.log_file_prefix = getattr(config, "LOG_PATH", "log.log")
+        options.log_file_max_size = getattr(config, "LOG_MAX_SIZE", 5 * 1024 * 1024)
+        options.log_file_num_backups = getattr(config, "LOG_BACKUPCOUNT", 10)
+    tornado.log.enable_pretty_logging(options = options)
 
     if not config.DEBUG :
         run_daemon(main)
