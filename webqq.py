@@ -24,6 +24,7 @@ from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
 from twqq.requests import Login2Request, FriendInfoRequest
+from twqq.requests import sess_message_handler
 
 from server import http_server_run
 from _simsimi import SimSimiTalk
@@ -133,6 +134,11 @@ class Client(WebQQClient):
                              send_uin, source):
         callback = partial(self.send_group_with_nick, member_nick, group_code)
         self.handle_message(send_uin, content, callback)
+
+    @sess_message_handler
+    def handle_sess_message(self, from_uin, content, source):
+        callback = partial(self.hub.send_sess_msg, from_uin)
+        self.handle_message(from_uin, content, callback)
 
 
     def _handle_content_url(self, content, callback):
