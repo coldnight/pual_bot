@@ -23,6 +23,7 @@
 #
 import os
 import time
+import logging
 from tornado.ioloop import IOLoop
 from tornado.web import RequestHandler, Application, asynchronous
 try:
@@ -35,6 +36,7 @@ try:
 except ImportError:
     HTTP_PORT = 8000
 
+logger = logging.getLogger()
 
 class BaseHandler(RequestHandler):
     webqq = None
@@ -96,7 +98,7 @@ class CheckHandler(BaseHandler):
         self.is_exit = not status
         self.finish()
 
-    def on_connection_close(self):
+    def on_finish(self):
         if self.is_exit:
             exit()
 
@@ -124,10 +126,8 @@ class CheckImgAPIHandler(BaseHandler):
         self.write({"status":True, "require":False})
 
 
-    def on_connection_close(self):
+    def on_finish(self):
         if self.is_exit:
-            with open("wait", "w"):
-                pass
             exit()
 
 
