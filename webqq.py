@@ -32,10 +32,14 @@ from command import Command, send_notice_email
 
 logger = logging.getLogger("client")
 
+simsimi = None
+if getattr(config, "SimSimi_Enabled", False):
+    simsimi = SimSimiTalk()
+
 class Client(WebQQClient):
     verify_img_path = None
     message_requests = {}
-    simsimi = SimSimiTalk()
+    simsimi = simsimi
     command = Command()
 
     URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
@@ -192,7 +196,8 @@ class Client(WebQQClient):
         if self._handle_run_code(from_uin, content, callback):
             return
 
-        self._handle_simsimi(content, callback, type)
+        if self.simsimi:
+            self._handle_simsimi(content, callback, type)
 
 
     def _handle_trans(self, content, callback):
