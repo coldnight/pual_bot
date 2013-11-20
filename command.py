@@ -218,6 +218,8 @@ class Command(object):
             data = resp.body
             if not data:
                 data = "OK"
+            if len(data) > MAX_LENGTH:
+                return self.paste(data, callback)
             callback(data.decode("utf-8"))
             return
         callback = partial(read_shell, callback = callback)
