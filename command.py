@@ -218,8 +218,12 @@ class Command(object):
             data = resp.body
             if not data:
                 data = "OK"
-            if len(data) > MAX_LENGTH or data.count("\n") >= 4:
+            if len(data) > MAX_LENGTH:
                 return self.paste(data, callback)
+
+            if data.count("\n") > 10:
+                data.replace("\n", " ")
+
             callback(data.decode("utf-8"))
             return
         callback = partial(read_shell, callback = callback)
