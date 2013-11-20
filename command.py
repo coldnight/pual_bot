@@ -218,7 +218,7 @@ class Command(object):
             data = resp.body
             if not data:
                 data = "OK"
-            if len(data) > MAX_LENGTH:
+            if len(data) > MAX_LENGTH or data.count("\n") >= 4:
                 return self.paste(data, callback)
             callback(data.decode("utf-8"))
             return
