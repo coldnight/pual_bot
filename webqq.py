@@ -151,8 +151,8 @@ class Client(WebQQClient):
         self.handle_message(send_uin, content, callback)
 
     @sess_message_handler
-    def handle_sess_message(self, from_uin, content, source):
-        callback = partial(self.hub.send_sess_msg, from_uin)
+    def handle_sess_message(self, qid, from_uin, content, source):
+        callback = partial(self.hub.send_sess_msg, qid, from_uin)
         self.handle_message(from_uin, content, callback)
 
 
