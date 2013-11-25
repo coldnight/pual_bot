@@ -71,6 +71,8 @@ class SimSimiTalk(object):
                    "Content-Type":"application/json; charset=utf-8",
                    "X-Requested-With":"XMLHttpRequest",
                    }
+        if not msg.strip():
+            return callback("小的在")
         params = {"msg":msg.encode("utf-8")}
         params.update(self.params)
 
