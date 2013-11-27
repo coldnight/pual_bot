@@ -17,6 +17,9 @@ easy_install twqq
 ```
 
 # 最近更新
+## 2013-11-27
+* 在遇到踢出时首先尝试重新登录(需更新 ``twqq`` 包)
+
 ## 2013-11-15
 * 将WebQQ协议提取成一个包: https://github.com/coldnight/twqq
 * 对代码进行重构

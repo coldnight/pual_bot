@@ -135,7 +135,7 @@ class Client(WebQQClient):
 
     @kick_message_handler
     def handle_kick(self, message):
-        sys.exit()    # 退出重启
+        self.hub.relogin()
 
 
     @system_message_handler
@@ -264,10 +264,9 @@ class Client(WebQQClient):
 
     @register_request_handler(PollMessageRequest)
     def handle_qq_errcode(self, request, resp, data):
-        if data and data.get("retcode") in [121, 100006]:
+        if data and data.get("retcode") in [100006]:
             logger.error(u"获取登出消息 {0!r}".format(data))
-            exit()
-
+            self.hub.relogin()
 
 
     def send_msg_with_markname(self, markname, message, callback = None):
