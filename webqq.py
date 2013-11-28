@@ -93,6 +93,7 @@ class Client(WebQQClient):
     def enter_verify_code(self, code, r, uin, callback = None):
         super(Client, self).enter_verify_code(code, r, uin)
         self.verify_callback = callback
+        self.verify_callback_called = False
 
 
     @register_request_handler(BeforeLoginRequest)
@@ -107,8 +108,10 @@ class Client(WebQQClient):
             self.handle_verify_callback(False, args[4])
 
     def handle_verify_callback(self, status, msg = None):
-        if hasattr(self, "verify_callback") and callable(self.verify_callback):
+        if hasattr(self, "verify_callback") and callable(self.verify_callback)\
+           and not self.verify_callback_called:
             self.verify_callback(status, msg)
+            self.verify_callback_called = True
 
 
     @register_request_handler(Login2Request)
@@ -348,6 +351,7 @@ def main():
     except KeyboardInterrupt:
         print("Exiting...", file =  sys.stderr)
     except SystemExit:
+        logger.error("检测到退出, 重新启动")
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
