@@ -95,13 +95,7 @@ class CheckHandler(BaseHandler):
 
     def on_callback(self, status, msg = None):
         self.write({"status":status, "message":msg})
-        self.is_exit = not status
         self.finish()
-
-    def on_finish(self):
-        if self.is_exit:
-            exit()
-
 
 class CheckImgAPIHandler(BaseHandler):
     is_exit = False
