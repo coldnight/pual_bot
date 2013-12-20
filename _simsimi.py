@@ -72,7 +72,7 @@ class SimSimiTalk(object):
                    "X-Requested-With":"XMLHttpRequest",
                    }
         if not msg.strip():
-            return callback("小的在")
+            return callback(u"小的在")
         params = {"msg":msg.encode("utf-8")}
         params.update(self.params)
 
