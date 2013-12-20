@@ -271,6 +271,10 @@ class Client(WebQQClient):
             logger.error(u"获取登出消息 {0!r}".format(data))
             self.hub.relogin()
 
+        if data and data.get("retcode") in [103]: # 103重新登陆不成功, 暂时退出
+            logger.error(u"获取登出消息 {0!r}".format(data))
+            exit()
+
 
     def send_msg_with_markname(self, markname, message, callback = None):
         request = self.hub.send_msg_with_markname(markname, message)
