@@ -32,6 +32,3 @@ easy_install twqq
 * ~~提取文档~~
 * ~~去除废弃代码~~
 * ~~将代码提取出一个包~~
-
-
-如果您觉得功能不错, 您可以 [![捐赠](https://img.alipay.com/sys/personalprod/style/mc/btn-index.png)](http://me.alipay.com/woodd)让我更多的支持开源事业
