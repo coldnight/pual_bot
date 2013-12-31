@@ -13,7 +13,7 @@ easy_install twqq
 将`config.py.example`重命名为 `config.py`, 填入QQ号码和密码配置, 执行webqq.py脚本. 
 
 ```bash
-    mv doc/config.py.example twqq/config.py
+    mv doc/config.py.example config.py
 ```
 
 # 最近更新
