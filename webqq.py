@@ -370,7 +370,7 @@ if __name__ == "__main__":
         options.log_file_num_backups = getattr(config, "LOG_BACKUPCOUNT", 10)
     tornado.log.enable_pretty_logging(options = options)
 
-    if not config.DEBUG :
+    if not config.DEBUG and hasattr(os, "fork"):
         run_daemon(main)
     else:
         main()
