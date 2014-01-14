@@ -26,11 +26,12 @@ from __future__ import print_function
 import re
 import os
 import sys
-import config
+import time
 import atexit
 import logging
 
 from functools import partial
+from datetime import datetime
 
 
 from twqq.client import WebQQClient
@@ -40,6 +41,8 @@ from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
 from twqq.requests import Login2Request, FriendInfoRequest
 from twqq.requests import sess_message_handler
+
+import config
 
 from server import http_server_run
 from _simsimi import SimSimiTalk
@@ -57,10 +60,37 @@ class Client(WebQQClient):
     message_requests = {}
     simsimi = simsimi
     command = Command()
+    start_time = time.time()
+    msg_num = 0
 
     URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
                         "?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)",
                         re.UNICODE)
+
+    def uptime(self):
+        up_time = datetime.fromtimestamp(self.start_time).strftime("%H:%M:%S")
+        now = time.time()
+
+        sub = int(now - self.start_time)
+        num, unit, oth = None, None, ""
+        if sub < 60:
+            num, unit = sub, "sec"
+        elif sub > 60 and sub < 3600:
+            num, unit = sub / 60, "min"
+        elif sub > 3600 and sub < 86400:
+            num = sub / 3600
+            unit = ""
+            num = "{0}:{1}".format("%02d" % num, ((sub - (num * 3600)) / 60))
+        elif sub > 86400:
+            num, unit = sub / 84600, "days"
+            h = (sub - (num * 86400)) / 3600
+            m = (sub - ((num * 86400) + h * 3600)) / 60
+            if h or m:
+                oth = ", {0}:{1}".format(h, m)
+
+        return "{0} up {1} {2} {3}, handle {4} message(s)"\
+                .format(up_time, num, unit, oth, self.msg_num)
+
 
     def handle_verify_code(self, path, r, uin):
         self.verify_img_path = path
@@ -191,9 +221,10 @@ class Client(WebQQClient):
         ping_cmd = "ping"
         about_cmd = "about"
         help_cmd = "help"
-        commands = [ping_cmd, about_cmd, help_cmd]
+        commands = [ping_cmd, about_cmd, help_cmd, "uptime"]
         command_resp = {ping_cmd:u"小的在", about_cmd:ABOUT_STR,
-                        help_cmd:HELP_DOC}
+                        help_cmd:HELP_DOC,
+                        "uptime":self.uptime}
 
         if content.encode("utf-8").strip().lower() in commands:
             body = command_resp[content.encode("utf-8").strip().lower()]
@@ -204,6 +235,7 @@ class Client(WebQQClient):
 
 
     def handle_message(self, from_uin, content, callback, type="g"):
+        self.msg_num += 1
         content = content.strip()
         if self._handle_content_url(content, callback):
             return
@@ -222,6 +254,9 @@ class Client(WebQQClient):
 
         if self.simsimi:
             self._handle_simsimi(content, callback, type)
+            return
+
+        self.msg_num -= 1
 
 
     def _handle_trans(self, content, callback):
