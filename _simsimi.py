@@ -41,7 +41,7 @@ class SimSimiTalk(object):
             self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
 
         self.url = "http://www.simsimi.com/func/req"
-        self.params = {"lc":"zh"}
+        self.params = {"lc":"zh", "ft":0.0}
         self.ready = False
 
         self.fetch_kwargs = {}
