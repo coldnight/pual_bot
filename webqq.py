@@ -88,7 +88,7 @@ class Client(WebQQClient):
             if h or m:
                 oth = ", {0}:{1}".format(h, m)
 
-        return "{0} up {1} {2} {3}, handle {4} message(s)"\
+        return "{0} up {1} {2} {3}, handled {4} message(s)"\
                 .format(up_time, num, unit, oth, self.msg_num)
 
 
