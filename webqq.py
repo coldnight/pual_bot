@@ -23,15 +23,16 @@
 #
 from __future__ import print_function
 
-import re
 import os
 import sys
 import time
 import atexit
+import smtplib
 import logging
+import traceback
 
 from functools import partial
-from datetime import datetime
+from email.mime.text import MIMEText
 
 
 from twqq.client import WebQQClient
@@ -45,52 +46,48 @@ from twqq.requests import sess_message_handler
 import config
 
 from server import http_server_run
-from _simsimi import SimSimiTalk
-from command import Command, send_notice_email
+from plugins import PluginLoader
 
 
 logger = logging.getLogger("client")
 
-simsimi = None
-if getattr(config, "SimSimi_Enabled", False):
-    simsimi = SimSimiTalk()
+SMTP_HOST = getattr(config, "SMTP_HOST", None)
+
+def send_notice_email():
+    """ 发送提醒邮件
+    """
+    if not SMTP_HOST:
+        return False
+
+    postfix = ".".join(SMTP_HOST.split(".")[1:])
+    me = "bot<{0}@{1}>".format(config.SMTP_ACCOUNT, postfix)
+
+    msg =  MIMEText(""" 你的WebQQ机器人需要一个验证码,
+                 请打开你的服务器输入验证码:
+                 http://{0}:{1}""".format(config.HTTP_LISTEN,
+                                          config.HTTP_PORT),
+                 _subtype="plain", _charset="utf-8")
+    msg['Subject'] = u"WebQQ机器人需要验证码"
+    msg["From"] = me
+    msg['To'] = config.EMAIL
+    try:
+        server = smtplib.SMTP()
+        server.connect(SMTP_HOST)
+        server.login(config.SMTP_ACCOUNT, config.SMTP_PASSWORD)
+        server.sendmail(me, [config.EMAIL], msg.as_string())
+        server.close()
+        return True
+    except Exception as e:
+        traceback.print_exc()
+        return False
+
+
 
 class Client(WebQQClient):
     verify_img_path = None
     message_requests = {}
-    simsimi = simsimi
-    command = Command()
     start_time = time.time()
     msg_num = 0
-
-    URL_RE = re.compile(r"(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)"
-                        "?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)",
-                        re.UNICODE)
-
-    def uptime(self):
-        up_time = datetime.fromtimestamp(self.start_time).strftime("%H:%M:%S")
-        now = time.time()
-
-        sub = int(now - self.start_time)
-        num, unit, oth = None, None, ""
-        if sub < 60:
-            num, unit = sub, "sec"
-        elif sub > 60 and sub < 3600:
-            num, unit = sub / 60, "min"
-        elif sub > 3600 and sub < 86400:
-            num = sub / 3600
-            unit = ""
-            num = "{0}:{1}".format("%02d" % num, ((sub - (num * 3600)) / 60))
-        elif sub > 86400:
-            num, unit = sub / 84600, "days"
-            h = (sub - (num * 86400)) / 3600
-            m = (sub - ((num * 86400) + h * 3600)) / 60
-            if h or m:
-                oth = ", {0}:{1}".format(h, m)
-
-        return "{0} up {1} {2} {3}, handled {4} message(s)"\
-                .format(up_time, num, unit, oth, self.msg_num)
-
 
     def handle_verify_code(self, path, r, uin):
         self.verify_img_path = path
@@ -138,6 +135,7 @@ class Client(WebQQClient):
             self.handle_verify_callback(False, args[4])
 
     def handle_verify_callback(self, status, msg = None):
+        self.plug_loader = PluginLoader(self)
         if hasattr(self, "verify_callback") and callable(self.verify_callback)\
            and not self.verify_callback_called:
             self.verify_callback(status, msg)
@@ -186,109 +184,13 @@ class Client(WebQQClient):
     @sess_message_handler
     def handle_sess_message(self, qid, from_uin, content, source):
         callback = partial(self.hub.send_sess_msg, qid, from_uin)
-        self.handle_message(from_uin, content, callback)
-
-
-    def _handle_content_url(self, content, callback):
-        urls = self.URL_RE.findall(content)
-        if urls:
-            logging.info(u"从 {1} 中获取链接: {0!r}".format(urls, content))
-            for url in urls:
-                self.command.url_info(url, callback)
-            return True
-
-    def _paste_content(self, content, callback):
-        code_typs = ['actionscript', 'ada', 'apache', 'bash', 'c', 'c#', 'cpp',
-              'css', 'django', 'erlang', 'go', 'html', 'java', 'javascript',
-              'jsp', 'lighttpd', 'lua', 'matlab', 'mysql', 'nginx',
-              'objectivec', 'perl', 'php', 'python', 'python3', 'ruby',
-              'scheme', 'smalltalk', 'smarty', 'sql', 'sqlite3', 'squid',
-              'tcl', 'text', 'vb.net', 'vim', 'xml', 'yaml']
-
-        if content.startswith("```"):
-            typ = content.split("\n")[0].lstrip("`").strip().lower()
-            if typ not in code_typs: typ = "text"
-            code = "\n".join(content.split("\n")[1:])
-            self.command.paste(code, callback, typ)
-            return True
-
-
-    def _handle_command(self, content, callback):
-        ABOUT_STR = u"\nAuthor    :   cold\nE-mail    :   wh_linux@126.com\n"\
-                u"HomePage  :   http://t.cn/zTocACq\n"\
-                u"Project@  :   http://git.io/hWy9nQ"
-        HELP_DOC = u"http://p.vim-cn.com/cbc2/"
-        ping_cmd = "ping"
-        about_cmd = "about"
-        help_cmd = "help"
-        commands = [ping_cmd, about_cmd, help_cmd, "uptime"]
-        command_resp = {ping_cmd:u"小的在", about_cmd:ABOUT_STR,
-                        help_cmd:HELP_DOC,
-                        "uptime":self.uptime}
-
-        if content.encode("utf-8").strip().lower() in commands:
-            body = command_resp[content.encode("utf-8").strip().lower()]
-            if not isinstance(body, (str, unicode)):
-                body = body()
-            callback(body)
-            return True
+        self.handle_message(from_uin, content, callback, 's')
 
 
     def handle_message(self, from_uin, content, callback, type="g"):
-        self.msg_num += 1
         content = content.strip()
-        if self._handle_content_url(content, callback):
-            return
-
-        if self._paste_content(content, callback):
-            return
-
-        if self._handle_command(content, callback):
-            return
-
-        if self._handle_trans(content, callback):
-            return
-
-        if self._handle_run_code(from_uin, content, callback):
-            return
-
-        if self.simsimi:
-            self._handle_simsimi(content, callback, type)
-            return
-
-        self.msg_num -= 1
-
-
-    def _handle_trans(self, content, callback):
-        if content.startswith("-tr"):
-            if content.startswith("-trw"):
-                web = True
-                st = "-trw"
-            else:
-                web = False
-                st = "-tr"
-            body = content.lstrip(st).strip()
-            self.command.cetr(body, callback, web)
-            return True
-
-    def _handle_run_code(self, from_uin, content, callback):
-        if content.startswith(">>>"):
-            body = content.lstrip(">").lstrip(" ")
-            bodys = []
-            for b in body.replace("\r\n", "\n").split("\n"):
-                bodys.append(b.lstrip(">>>"))
-            body = "\n".join(bodys)
-            self.command.shell(from_uin, body, callback)
-            return True
-
-    def _handle_simsimi(self, content, callback, typ):
-        if typ == "g":
-            if content.startswith(self.hub.nickname.lower().strip()) or \
-               content.endswith(self.hub.nickname.lower().strip()):
-                self.simsimi.talk(content.strip(self.hub.nickname), callback)
-        else:
-            self.simsimi.talk(content.strip(self.hub.nickname), callback)
-
+        if self.plug_loader.dispatch(from_uin, content, type, callback):
+            self.msg_num += 1
 
     def send_group_with_nick(self, nick, group_code, content):
         content = u"{0}: {1}".format(nick, content)
