@@ -15,6 +15,7 @@ from plugins import BasePlugin
 
 
 class UrlReader(object):
+    _TITLE_PATTERN = re.compile(r'<title>(.*?)</title>', re.M|re.I)
     def __init__(self, http, logger):
         self.http = http
         self.logger = logger
