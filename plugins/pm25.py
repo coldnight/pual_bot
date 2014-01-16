@@ -105,6 +105,3 @@ class PM25Plugin(BasePlugin):
             return "".join(pinyin_array)
         else:
             return ''
-
-
-
