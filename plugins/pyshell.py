@@ -44,7 +44,7 @@ class PythonShellPlugin(PastePlugin):
             if not data:
                 data = "OK"
             if len(data) > config.MAX_LENGTH:
-                return self.paste(data, callback)
+                return self.paste(data, callback, "")
 
             if data.count("\n") > 10:
                 data.replace("\n", " ")
