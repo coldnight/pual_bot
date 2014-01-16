@@ -79,4 +79,4 @@ class URLReaderPlugin(BasePlugin):
         return False
 
     def handle_message(self, callback):
-        self._reader.read(self._urls, callback)
+        [self._reader.read(url, callback) for url in self._urls]
