@@ -31,6 +31,7 @@ class PM25Plugin(BasePlugin):
         """
         根据城市查询PM25值
         """
+        self._city = city.encode("utf-8")
         if city:
             url = PM25_URL + city.encode("utf-8")
             self.http.get(url, callback = self.callback,
@@ -90,7 +91,7 @@ class PM25Plugin(BasePlugin):
                 .format (city_name.decode("utf-8"), city_aqi.decode("utf-8"),
                          "\n".join(city_data_array).decode("utf-8"),
                          city_aqi_update_time.decode("utf-8"), PM25_URL,
-                         self.city)
+                         self._city)
 
         callback(city_air_status_str)
 
