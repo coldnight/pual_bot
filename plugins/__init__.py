@@ -47,7 +47,9 @@ class PluginLoader(object):
         self.current_path = os.path.abspath(os.path.dirname(__file__))
         self.webqq = webqq
         for m in self.list_modules():
-            self.load_class(self.import_module(m))
+            mobj = self.import_module(m)
+            if mobj is not None:
+                self.load_class(mobj)
 
         logger.info("Load Plugins: {0!r}".format(self.plugins))
 
@@ -58,7 +60,12 @@ class PluginLoader(object):
         return modules
 
     def import_module(self, m):
-        return __import__("plugins." + m, fromlist=["plugins"])
+        try:
+            return __import__("plugins." + m, fromlist=["plugins"])
+        except:
+            logger.warn("Error was encountered on loading {0}, will ignore it"
+                        .format(m), exc_info = True)
+            return None
 
     def load_class(self, m):
         for key, val in m.__dict__.items():
