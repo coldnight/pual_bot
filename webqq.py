@@ -135,7 +135,9 @@ class Client(WebQQClient):
             self.handle_verify_callback(False, args[4])
 
     def handle_verify_callback(self, status, msg = None):
-        self.plug_loader = PluginLoader(self)
+        if not hasattr(self, "plug_loader"):
+            self.plug_loader = PluginLoader(self)
+
         if hasattr(self, "verify_callback") and callable(self.verify_callback)\
            and not self.verify_callback_called:
             self.verify_callback(status, msg)
