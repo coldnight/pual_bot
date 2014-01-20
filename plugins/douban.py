@@ -64,6 +64,10 @@ class DoubanPlugin(BasePlugin):
            (content.startswith(u"《") and content.endswith(u"》")):
             self._name = content.strip("<").strip(">").strip(u"《")\
                     .strip(u"》")
+
+            if not self._name.strip():
+                return False
+
             if self.douban is None:
                 self.douban = DoubanReader(self.http)
             return True
