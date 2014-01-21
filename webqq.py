@@ -285,7 +285,7 @@ def run_daemon(callback, args = (), kwargs = {}):
 
 
 def main():
-    webqq = Client(config.QQ, config.QQ_PWD)
+    webqq = Client(config.QQ, config.QQ_PWD, debug = getattr(config, "TRACE", False))
     try:
         if getattr(config, "HTTP_CHECKIMG", False):
             http_server_run(webqq)
