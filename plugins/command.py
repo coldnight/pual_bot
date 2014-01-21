@@ -19,7 +19,7 @@ class CommandPlugin(BasePlugin):
                 .strftime("%H:%M:%S")
         now = time.time()
 
-        sub = int(now - self.start_time)
+        sub = int(now - self.webqq.start_time)
         num, unit, oth = None, None, ""
         if sub < 60:
             num, unit = sub, "sec"
