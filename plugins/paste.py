@@ -35,7 +35,13 @@ class PastePlugin(BasePlugin):
 
     def read_paste(self, resp, callback, ctype="text"):
         """ 读取贴代码结果, 并发送消息 """
-        content = resp.body.strip().rstrip("/") + "/" + ctype
+        if resp.code == 200:
+            content = resp.body.strip().rstrip("/") + "/" + ctype
+        elif resp.code == 400:
+            content = u"内容太短, 不需要贴!"
+        else:
+            content = u"没贴上, 我也不知道为什么!"
+
         callback(content)
 
 
