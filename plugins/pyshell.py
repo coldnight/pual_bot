@@ -32,7 +32,7 @@ class PythonShellPlugin(PastePlugin):
         """
         if self.body.strip() in ["cls", "clear"]:
             url = "http://pythonec.appspot.com/drop"
-            params = [("session", ),]
+            params = [("session", self.from_uin),]
         else:
             url = "http://pythonec.appspot.com/shell"
             #url = "http://localhost:8080/shell"
