@@ -79,7 +79,12 @@ class PluginLoader(object):
         """
         for key, val in self.plugins.items():
             if val.is_match(from_uin, content, type):
-                val.handle_message(callback)
-                logger.info(u"Plugin {0} handled message {1}".format(key, content))
-                return True
+                try:
+                    val.handle_message(callback)
+                    logger.info(u"Plugin {0} handled message {1}".format(key, content))
+                except:
+                    logger.error(u"Plugin {0} was encoutered an error"
+                                 .format(key), exc_info = True)
+                else:
+                    return True
         return False
