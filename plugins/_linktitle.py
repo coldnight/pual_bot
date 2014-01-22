@@ -51,6 +51,7 @@ _black_list = (
   r'^https://groups\.google\.com/forum/#',
   r'^http://paste\.linuxzen\.com/p/',
   r'^http://0\.web\.qstatic\.com/webqqpic/style/face/'
+  r'^http://127\.0\.0\.1'
 )
 
 _black_list = tuple(re.compile(x) for x in _black_list)
