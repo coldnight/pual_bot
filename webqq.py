@@ -41,7 +41,7 @@ from twqq.requests import system_message_handler, group_message_handler
 from twqq.requests import buddy_message_handler, BeforeLoginRequest
 from twqq.requests import register_request_handler, BuddyMsgRequest
 from twqq.requests import Login2Request, FriendInfoRequest
-from twqq.requests import sess_message_handler
+from twqq.requests import sess_message_handler, discu_message_handler
 
 import config
 
@@ -53,6 +53,7 @@ logger = logging.getLogger("client")
 
 SMTP_HOST = getattr(config, "SMTP_HOST", None)
 
+
 def send_notice_email():
     """ 发送提醒邮件
     """
@@ -62,11 +63,11 @@ def send_notice_email():
     postfix = ".".join(SMTP_HOST.split(".")[1:])
     me = "bot<{0}@{1}>".format(config.SMTP_ACCOUNT, postfix)
 
-    msg =  MIMEText(""" 你的WebQQ机器人需要一个验证码,
-                 请打开你的服务器输入验证码:
-                 http://{0}:{1}""".format(config.HTTP_LISTEN,
-                                          config.HTTP_PORT),
-                 _subtype="plain", _charset="utf-8")
+    msg = MIMEText(""" 你的WebQQ机器人需要一个验证码,
+                   请打开你的服务器输入验证码:
+                   http://{0}:{1}""".format(config.HTTP_LISTEN,
+                                            config.HTTP_PORT),
+                   _subtype="plain", _charset="utf-8")
     msg['Subject'] = u"WebQQ机器人需要验证码"
     msg["From"] = me
     msg['To'] = config.EMAIL
@@ -80,7 +81,6 @@ def send_notice_email():
     except Exception as e:
         traceback.print_exc()
         return False
-
 
 
 class Client(WebQQClient):
@@ -116,12 +116,10 @@ class Client(WebQQClient):
                 check_code = raw_input("输入验证码: ")
             self.enter_verify_code(check_code, r, uin)
 
-
-    def enter_verify_code(self, code, r, uin, callback = None):
+    def enter_verify_code(self, code, r, uin, callback=None):
         super(Client, self).enter_verify_code(code, r, uin)
         self.verify_callback = callback
         self.verify_callback_called = False
-
 
     @register_request_handler(BeforeLoginRequest)
     def handle_verify_check(self, request, resp, data):
@@ -134,7 +132,7 @@ class Client(WebQQClient):
         if scode != 0:
             self.handle_verify_callback(False, args[4])
 
-    def handle_verify_callback(self, status, msg = None):
+    def handle_verify_callback(self, status, msg=None):
         if not hasattr(self, "plug_loader"):
             self.plug_loader = PluginLoader(self)
 
@@ -143,7 +141,6 @@ class Client(WebQQClient):
             self.verify_callback(status, msg)
             self.verify_callback_called = True
 
-
     @register_request_handler(Login2Request)
     def handle_login_errorcode(self, request, resp, data):
         if not resp.body:
@@ -151,7 +148,7 @@ class Client(WebQQClient):
 
         if data.get("retcode") != 0:
             return self.handle_verify_callback(False, u"登录失败: {0}"
-                                        .format(data.get("retcode")))
+                                               .format(data.get("retcode")))
 
     @register_request_handler(FriendInfoRequest)
     def handle_frind_info_erro(self, request, resp, data):
@@ -159,17 +156,15 @@ class Client(WebQQClient):
             self.handle_verify_callback(False, u"获取好友列表失败")
             return
 
-        if data.get("retcode") !=0:
+        if data.get("retcode") != 0:
             self.handle_verify_callback(False, u"好友列表获取失败: {0}"
                                         .format(data.get("retcode")))
             return
         self.handle_verify_callback(True)
 
-
     @kick_message_handler
     def handle_kick(self, message):
         self.hub.relogin()
-
 
     @system_message_handler
     def handle_friend_add(self, mtype, from_uin, account, message):
@@ -188,6 +183,15 @@ class Client(WebQQClient):
         callback = partial(self.hub.send_sess_msg, qid, from_uin)
         self.handle_message(from_uin, content, callback, 's')
 
+    @discu_message_handler
+    def handle_discu_message(self, did, from_uin, content, source):
+        nick = self.hub.get_friend_name(from_uin)
+        callback = partial(self.send_discu_with_nick, nick, did)
+        self.handle_message(from_uin, content, callback, 'g')
+
+    def send_discu_with_nick(self, nick, did, content):
+        content = u"{0}: {1}".format(nick, content)
+        self.hub.send_discu_msg(did, content)
 
     def handle_message(self, from_uin, content, callback, type="g"):
         content = content.strip()
@@ -203,19 +207,17 @@ class Client(WebQQClient):
         callback = partial(self.hub.send_buddy_msg, from_uin)
         self.handle_message(from_uin, content, callback, 'b')
 
-
     @register_request_handler(PollMessageRequest)
     def handle_qq_errcode(self, request, resp, data):
         if data and data.get("retcode") in [100006]:
             logger.error(u"获取登出消息 {0!r}".format(data))
             self.hub.relogin()
 
-        if data and data.get("retcode") in [103]: # 103重新登陆不成功, 暂时退出
+        if data and data.get("retcode") in [103]:  # 103重新登陆不成功, 暂时退出
             logger.error(u"获取登出消息 {0!r}".format(data))
             exit()
 
-
-    def send_msg_with_markname(self, markname, message, callback = None):
+    def send_msg_with_markname(self, markname, message, callback=None):
         request = self.hub.send_msg_with_markname(markname, message)
         if request is None:
             callback(False, u"不存在该好友")
@@ -238,16 +240,14 @@ class Client(WebQQClient):
 
         callback(True)
 
-
-    def run(self, handler = None):
+    def run(self, handler=None):
         self.handler = handler
         super(Client, self).run()
 
 
-
-
-def run_daemon(callback, args = (), kwargs = {}):
+def run_daemon(callback, args=(), kwargs = {}):
     path = os.path.abspath(os.path.dirname(__file__))
+
     def _fork(num):
         try:
             pid = os.fork()
@@ -257,7 +257,6 @@ def run_daemon(callback, args = (), kwargs = {}):
             sys.stderr.write("fork #%d faild:%d(%s)\n" % (num, e.errno,
                                                           e.strerror))
             sys.exit(1)
-
 
     _fork(1)
 
@@ -285,18 +284,18 @@ def run_daemon(callback, args = (), kwargs = {}):
 
 
 def main():
-    webqq = Client(config.QQ, config.QQ_PWD, debug = getattr(config, "TRACE", False))
+    webqq = Client(config.QQ, config.QQ_PWD,
+                   debug=getattr(config, "TRACE", False))
     try:
         if getattr(config, "HTTP_CHECKIMG", False):
             http_server_run(webqq)
         else:
             webqq.run()
     except KeyboardInterrupt:
-        print("Exiting...", file =  sys.stderr)
+        print("Exiting...", file=sys.stderr)
     except SystemExit:
         logger.error("检测到退出, 重新启动")
         os.execv(sys.executable, [sys.executable] + sys.argv)
-
 
 
 if __name__ == "__main__":
@@ -305,9 +304,10 @@ if __name__ == "__main__":
 
     if not getattr(config, "DEBUG", False):
         options.log_file_prefix = getattr(config, "LOG_PATH", "log.log")
-        options.log_file_max_size = getattr(config, "LOG_MAX_SIZE", 5 * 1024 * 1024)
+        options.log_file_max_size = getattr(
+            config, "LOG_MAX_SIZE", 5 * 1024 * 1024)
         options.log_file_num_backups = getattr(config, "LOG_BACKUPCOUNT", 10)
-    tornado.log.enable_pretty_logging(options = options)
+    tornado.log.enable_pretty_logging(options=options)
 
     if not config.DEBUG and hasattr(os, "fork"):
         run_daemon(main)
