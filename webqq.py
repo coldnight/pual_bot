@@ -213,7 +213,7 @@ class Client(WebQQClient):
             logger.error(u"获取登出消息 {0!r}".format(data))
             self.hub.relogin()
 
-        if data and data.get("retcode") in [103]:  # 103重新登陆不成功, 暂时退出
+        if data and data.get("retcode") in [103, 100002]:  # 103重新登陆不成功, 暂时退出
             logger.error(u"获取登出消息 {0!r}".format(data))
             exit()
 
