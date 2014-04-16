@@ -39,12 +39,12 @@ import tornado.iostream
 
 # try to import C parser then fallback in pure python parser.
 try:
-  from http_parser.parser import HttpParser
+    from http_parser.parser import HttpParser
 except ImportError:
     try:
         from http_parser.pyparser import HttpParser
     except ImportError:
-        from HTMLParser import HttpParser  # py2
+        from HTMLParser import HTMLParser as HttpParser  # py2
 
 UserAgent = 'FetchTitle/1.2 (wh_linux@126.com)'
 class SingletonFactory:
