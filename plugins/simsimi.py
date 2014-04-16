@@ -30,7 +30,7 @@ class SimSimiTalk(object):
             self.http.validate_cert = False
             self.http.set_global_headers({"Accept-Charset": "UTF-8,*;q=0.5"})
 
-        self.url = "http://www.simsimi.com/func/req"
+        self.url = "http://www.simsimi.com/func/reqN"
         self.params = {"lc":"zh", "ft":0.0}
         self.ready = False
 
@@ -41,12 +41,21 @@ class SimSimiTalk(object):
 
         self._setup_cookie()
 
-
     def _setup_cookie(self):
+        self.http.get("http://www.simsimi.com", callback=self._set_profile)
+
+    def _set_profile(self, resp):
         def callback(resp):
             self.ready = True
-
-        self.http.get("http://www.simsimi.com", callback = callback)
+        params = {"name": "PBot", "uid": "52125598"}
+        headers = {"Referer":"http://www.simsimi.com/set_profile_frameview.htm",
+                   "Accept":"application/json, text/javascript, */*; q=0.01",
+                   "Accept-Language":"zh-cn,en_us;q=0.7,en;q=0.3",
+                   "Content-Type":"application/json; charset=utf-8",
+                   "X-Requested-With":"XMLHttpRequest",
+                   "Cookie": "simsimi_uid=52125598"}
+        self.http.post("http://www.simsimi.com/func/setProfile", params,
+                       headers=headers, callback=callback)
 
 
     def talk(self, msg, callback):
@@ -55,15 +64,15 @@ class SimSimiTalk(object):
         :param msg: 信息
         :param callback: 接收响应的回调
         """
-        headers = {"Referer":"http://www.simsimi.com/talk.htm",
+        headers = {"Referer":"http://www.simsimi.com/talk_frameview.htm",
                    "Accept":"application/json, text/javascript, */*; q=0.01",
-                   "Accept-Language":"zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3",
+                   "Accept-Language":"zh-cn,en_us;q=0.7,en;q=0.3",
                    "Content-Type":"application/json; charset=utf-8",
                    "X-Requested-With":"XMLHttpRequest",
-                   }
+                   "Cookie": "simsimi_uid=52125598"}
         if not msg.strip():
             return callback(u"小的在")
-        params = {"msg":msg.encode("utf-8")}
+        params = {"req":msg.encode("utf-8")}
         params.update(self.params)
 
         def _talk(resp):
@@ -73,7 +82,8 @@ class SimSimiTalk(object):
                     data = json.loads(resp.body)
                 except ValueError:
                     pass
-            callback(data.get("response", "Server respond nothing!"))
+            print resp.body
+            callback(data.get("sentence_resp", "Server respond nothing!"))
 
         self.http.get(self.url, params, headers = headers,
                       callback = _talk)
