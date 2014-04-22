@@ -50,8 +50,11 @@ _black_list = (
   r'^http://supercat-lab\.org/pastebox/.+',
   r'^https://groups\.google\.com/forum/#',
   r'^http://paste\.linuxzen\.com/p/',
-  r'^http://0\.web\.qstatic\.com/webqqpic/style/face/'
-  r'^http://127\.0\.0\.1'
+  r'^http://0\.web\.qstatic\.com/webqqpic/style/face/',
+  r'^http://127\.0\.0\.1',
+  r'^http://localhost',
+  r'^https://localhost',
+  r'^localhost',
 )
 
 _black_list = tuple(re.compile(x) for x in _black_list)
