@@ -7,7 +7,7 @@ pual_bot 是基于[twqq](https://github.com/coldnight/twqq)的高效的支持并
 # 安装配置
 程序依赖 可使用 easy_install 安装
 ```bash
-easy_install twqq==0.17.0 http-parser regex
+easy_install twqq http-parser regex
 ```
 
 有些插件依赖于 bs4, 所以可以通过 apt 安装
