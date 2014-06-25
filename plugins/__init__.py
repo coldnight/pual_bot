@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger("plugin")
 
 class BasePlugin(object):
+    priority = 0    # 优先级
     """ 插件基类, 所有插件继承此基类, 并实现 hanlde_message 实例方法
     :param webqq: webqq.WebQQClient 实例
     :param http: TornadoHTTPClient 实例
@@ -42,7 +43,7 @@ class BasePlugin(object):
 
 
 class PluginLoader(object):
-    plugins = {}
+    plugins = []
     def __init__(self, webqq):
         self.current_path = os.path.abspath(os.path.dirname(__file__))
         self.webqq = webqq
@@ -50,6 +51,8 @@ class PluginLoader(object):
             mobj = self.import_module(m)
             if mobj is not None:
                 self.load_class(mobj)
+
+        self.plugins = sorted(self.plugins, key=lambda x: x[2], reverse=True)
 
         logger.info("Load Plugins: {0!r}".format(self.plugins))
 
@@ -71,13 +74,15 @@ class PluginLoader(object):
         for key, val in m.__dict__.items():
             if inspect.isclass(val) and issubclass(val, BasePlugin) and \
                val != BasePlugin:
-                self.plugins[key] = val(self.webqq, self.webqq.hub.http,
-                                        self.webqq.hub.nickname, logger)
+                self.plugins.append((key, val(self.webqq, self.webqq.hub.http,
+                                              self.webqq.hub.nickname, logger),
+                                     val.priority))
+
 
     def dispatch(self, from_uin, content, type, callback):
         """ 调度插件处理消息
         """
-        for key, val in self.plugins.items():
+        for key, val, _ in self.plugins:
             if val.is_match(from_uin, content, type):
                 try:
                     val.handle_message(callback)

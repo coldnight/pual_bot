@@ -91,6 +91,7 @@ class SimSimiTalk(object):
 
 class SimSimiPlugin(BasePlugin):
     simsimi = None
+    priority = -1
 
     def is_match(self, form_uin, content, type):
         if not getattr(config, "SimSimi_Enabled", False):
