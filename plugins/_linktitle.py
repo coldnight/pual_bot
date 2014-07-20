@@ -1,18 +1,21 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
+#-*- coding: utf8 -*-
 __desc__ = 'Fetch link title or info'
 
 from functools import partial
 import logging
+import json
+import time
 
 from _fetchtitle import (
   TitleFetcher, MediaType,
   GithubFinder, GithubUserFinder,
   URLFinder,
+  HtmlTitleParser,
 )
 
+from pyxmpp2.expdict import ExpiringDictionary
+import tornado.ioloop
 from tornado.httpclient import AsyncHTTPClient
-from tornado.ioloop import IOLoop
 
 httpclient = AsyncHTTPClient()
 
@@ -28,13 +31,16 @@ except ImportError:
   logging.warn('mrab regex module not available, using simpler URL regex.')
   link_re = re.compile(r'\b(?:https?://|www\.)[-A-Z0-9+&@#/%=~_|$?!:,.]*[A-Z0-9+&@#/%=~_|$]')
 
+_cache = ExpiringDictionary(default_timeout=300)
 
 _black_list = (
   r'p\.vim-cn\.com/\w{3}/?',
   r'^http://p\.gocmd\.net/\w{3}/?',
   r'^http://paste\.edisonnotes\.com/\w{3}/?',
   r'paste\.ubuntu\.(?:org\.cn|com)/\d+/?$',
-  r'(?:imagebin|susepaste|paste\.kde)\.org/\d+/?$',
+  r'^http://paste\.pound-python\.org/show/',
+  r'^http://bpaste\.net/show/',
+  r'(?:susepaste|paste\.kde)\.org/\d+/?$',
   r'^https?://(?:gitcafe|geakit)\.com/',
   r'^http://ideone\.com/\w+$',
   r'^http://imgur\.com/\w+$',
@@ -51,25 +57,21 @@ _black_list = (
   r'^https://groups\.google\.com/forum/#',
   r'^http://paste\.linuxzen\.com/p/',
   r'^http://0\.web\.qstatic\.com/webqqpic/style/face/',
-  r'^http://127\.0\.0\.1',
-  r'^http://localhost',
-  r'^https://localhost',
-  r'^localhost',
+  r'^http://www\.zhihu\.com/\?next=',
 )
 
 _black_list = tuple(re.compile(x) for x in _black_list)
 
 _stop_url_pairs = (
-  ('http://weibo.com/signup/', 'http://weibo.com/'),
-  ('http://weibo.com/signup/', 'http://www.weibo.com/'),
-  ('http://weibo.com/login.php?url=', 'http://weibo.com/'),
-  ('http://weibo.com/login.php?url=', 'http://www.weibo.com/'),
+  ('http://passport.weibo.com/visitor/visitor?', 'http://weibo.com/'),
+  ('http://passport.weibo.com/visitor/visitor?', 'http://www.weibo.com/'),
   ('https://accounts.google.com/ServiceLogin?', 'https://www.google.com/'),
   ('https://accounts.google.com/ServiceLogin?', 'https://plus.google.com/'),
   ('https://accounts.google.com/ServiceLogin?', 'https://accounts.google.com/'),
   ('https://bitbucket.org/account/signin/', 'https://bitbucket.org/'),
   ('http://www.renren.com/SysHome.do?origURL=', 'http://www.renren.com/'),
 )
+
 def filesize(size):
   if size < 1024:
       num, unit = size, "B"
@@ -84,6 +86,7 @@ def filesize(size):
       num, unit = size / (1024 ** 4), "T"
 
   return u"{0} {1}".format(num, unit)
+
 
 def blacklisted(u):
   for i in _black_list:
@@ -118,127 +121,147 @@ class SogouImage(URLFinder):
   def _got_image(self, info, fetcher):
     self.done(info)
 
+class Imagebin(URLFinder):
+  _url_pat = re.compile(r'http://imagebin\.org/(\d+)')
+  _image_url = 'http://imagebin.org/index.php?mode=image&id='
+
+  def __call__(self):
+    url = self._image_url + self.match.group(1)
+    call_fetcher(url, self._got_info, referrer=self.fullurl)
+
+  def _got_info(self, info, fetcher):
+    self.done(info)
+
+class WeixinCopy(URLFinder):
+  _url_pat = re.compile(r'http://mp\.weixin\.qq\.com/s\?')
+  _src_pat = re.compile(br"var\s+msg_source_url\s+=\s+'([^']+)'")
+  def __call__(self):
+    httpclient.fetch(self.fullurl, self._got_page)
+
+  def _got_page(self, res):
+    m = self._src_pat.findall(res.body)
+    if m:
+      src = m[-1].decode('latin1')
+      if src.endswith('#rd'):
+        src = src[:-3]
+    else:
+      src = '(未知)'
+    p = HtmlTitleParser()
+    p.feed(res.body)
+    if p.result:
+      title = p.result
+    else:
+      title = '(未知)'
+    self.done((title, src))
+
 def format_github_repo(repoinfo):
   if not repoinfo['description']:
-    repoinfo['description'] = u'该仓库没有描述 :-('
-  ans = u'⇪Github 项目描述：%(description)s (%(language)s) ♡ %(watchers)d ⑂ %(forks)d，最后更新：%(updated_at)s' % repoinfo
+    repoinfo['description'] = '该仓库没有描述 :-('
+  ans = '⇪Github 项目描述：%(description)s (%(language)s) ♡ %(watchers)d ⑂ %(forks)d，最后更新：%(updated_at)s' % repoinfo
   if repoinfo['fork']:
     ans += ' (forked)'
-  ans += u'。'
+  ans += '。'
   return ans
 
 def prepare_field(d, key, prefix):
   d[key] = prefix + d[key] if d.get(key, False) else ''
 
 def format_github_user(userinfo):
-  prepare_field(userinfo, u'blog', u'，博客：')
-  prepare_field(userinfo, u'company', u'，公司：')
-  prepare_field(userinfo, u'location', u'，地址：')
+  prepare_field(userinfo, 'blog', '，博客：')
+  prepare_field(userinfo, 'company', '，公司：')
+  prepare_field(userinfo, 'location', '，地址：')
   if 'name' not in userinfo:
     userinfo['name'] = userinfo['login']
-  ans = u'⇪Github %(type)s：%(name)s，%(public_repos)d 公开仓库，%(followers)d 关注者，关注 %(following)d 人%(blog)s %(company)s%(location)s，最后活跃时间：%(updated_at)s。' % userinfo
+  ans = '⇪Github %(type)s：%(name)s，%(public_repos)d 公开仓库，%(followers)d 关注者，关注 %(following)d 人%(blog)s %(company)s%(location)s，最后活跃时间：%(updated_at)s。' % userinfo
   return ans
 
 def format_mediatype(info):
-    ret = u'⇪文件类型: ' + info.type
+    ret = '⇪文件类型: ' + info.type
     if info.size:
-      ret += u', 文件大小: ' + filesize(info.size)
+      ret += ', 文件大小: ' + filesize(info.size)
     if info.dimension:
       s = info.dimension
       if isinstance(s, tuple):
-        s = u'%dx%d' % s
-      ret += u', 图像尺寸: ' + s
+        s = '%dx%d' % s
+      ret += ', 图像尺寸: ' + s
     return ret
 
 def replylinktitle(reply, info, fetcher):
-  if isinstance(info, bytes):
-    try:
-      info = info.decode('gb18030')
-    except UnicodeDecodeError:
-      pass
-
   timeout = None
   finderC = fetcher.finder.__class__
   if info is False:
+    _cache.set_item(fetcher.origurl, False, 86400)
     logging.info('url skipped: %s', fetcher.origurl)
     return
+  elif finderC is Imagebin:
+    ans = '⇪Imagebin 图片: %s' % format_mediatype(info)[3:]
+  elif finderC is WeixinCopy:
+    ans = '⇪微信转载文章标题: %s，来源: %s' % info
   elif finderC is SogouImage:
     print(info)
-    ans = u'⇪搜索输入法图片: %s' % format_mediatype(info)[3:]
-  elif isinstance(info, basestring):
+    ans = '⇪搜索输入法图片: %s' % format_mediatype(info)[3:]
+  elif isinstance(info, str):
+    # take at most 100 characters
+    if len(info) > 100:
+      info = info[:100].rstrip() + '...'
+    info = info.strip()
     if fetcher.status_code != 200:
       info = '[%d] ' % fetcher.status_code + info
-    ans = u'⇪网页标题: ' + info.replace('\n', '')
+    ans = '⇪网页标题: ' + info.replace('\n', '')
   elif isinstance(info, MediaType):
     ans = format_mediatype(info)
   elif info is None:
-    ans = u'该网页没有标题 :-('
+    ans = '该网页没有标题 :-('
   elif isinstance(info, dict): # github json result
     res = fetcher.finder.response
     if res.code != 200:
-      logging.warn(u'Github{,User}Finder returned HTTP code %s (body is %s).', res.code, res.body)
-      ans = u'[Error %d]' % res.code
+      logging.warn('Github{,User}Finder returned HTTP code %s (body is %s).', res.code, res.body)
+      ans = '[Error %d]' % res.code
     else:
       if finderC is GithubFinder:
         ans = format_github_repo(info)
       elif finderC is GithubUserFinder:
         ans = format_github_user(info)
       else:
-        logging.error(u'got a dict of unknown type: %s', finderC.__name__)
-        ans = u'（内部错误）'
+        logging.error('got a dict of unknown type: %s', finderC.__name__)
+        ans = '（内部错误）'
   else:
-    ans = u'出错了！ {0}'.format(info)
+    ans = '出错了！' + repr(info)
+    timeout = 10
 
   if fetcher.origurl != fetcher.fullurl:
-    ans += u' (重定向到 %s )' % fetcher.fullurl
+    ans += ' (重定向到 %s )' % fetcher.fullurl
 
-  logging.info(u'url info: %s', ans)
-  reply(ans)
+  logging.info('url info: %s', ans)
+  reply(fetcher.origurl, ans, timeout=timeout)
 
 def call_fetcher(url, callback, referrer=None):
   fetcher = TitleFetcher(url, callback, referrer=referrer, url_finders=(
-    GithubFinder, GithubUserFinder, SogouImage, StopURLs), run_at_init=False)
+    GithubFinder, GithubUserFinder,
+    Imagebin, WeixinCopy, SogouImage, StopURLs,
+  ), run_at_init=False)
   try:
     fetcher.run()
   except UnicodeError as e:
     callback(e, fetcher)
 
-def getTitle(u, reply):
-  logging.info('fetching url: %s', u)
-  call_fetcher(u, partial(replylinktitle, reply))
+def getTitle(u, reply, how=replylinktitle):
+  try:
+    # ExpiringDictionary.get won't do expiration
+    cached = _cache[u]
+    logging.info('fetched url info: %r (%s)', cached, u)
+    if cached:
+      reply(cached)
+  except KeyError:
+    logging.info('fetching url: %s', u)
+    call_fetcher(u, partial(how, partial(_cache_and_reply, reply)))
 
-
-def get_urls(msg):
-  seen = set()
-  for m in link_re.finditer(msg):
-    u = m.group(0)
-    if u not in seen:
-      if blacklisted(u):
-        continue
-      if not u.startswith("http"):
-        if msg[m.start() - 3: m.start()] == '://':
-          continue
-        u = 'http://' + u
-        if u in seen:
-          continue
-        if u.count('/') == 2:
-          u += '/'
-        if u in seen:
-          continue
-      seen.add(u)
-  return seen
+def _cache_and_reply(reply, key, msg, timeout=None):
+  _cache.set_item(key, msg, timeout)
+  reply(msg)
 
 def fetchtitle(urls, reply):
   for u in urls:
     getTitle(u, reply)
 
-def register(bot):
-  bot.register_msg_handler(fetchtitle)
-
-
-if __name__ == "__main__":
-  def cb(tt):
-    print tt
-  fetchtitle(["http://www.baidu.com"], cb)
-  IOLoop.instance().start()
 # vim:se sw=2:

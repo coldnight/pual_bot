@@ -4,15 +4,15 @@
 #  Source: https://github.com/lilydjwg/winterpy/blob/master/pylib/mytornado/fetchtitle.py
 #  由 cold (https://github.com/coldnight) 添加 Python2 支持
 # vim:fileencoding=utf-8
-
 import re
 import socket
+
 try:
-    from urllib.parse import urlsplit, urljoin
-    py3 = True
+  from urllib.parse import urlsplit, urljoin
+  py3 = True
 except ImportError:
-    from urlparse import urlsplit, urljoin  # py2
-    py3 = False
+  from urlparse import urlsplit, urljoin  # py2
+  py3 = False
 
 from functools import partial
 from collections import namedtuple
@@ -22,31 +22,117 @@ import logging
 import encodings.idna
 try:
   # Python 3.3
-  from html.entities import html5 as _entities
-  def _extract_entity_name(m):
-    return m.group()[1:]
+  from html.entities import html5 as entifydefs
 except ImportError:
-    try:
-        from html.entities import entitydefs as _entities
-    except ImportError:
-        from htmlentitydefs import entitydefs as _entities # py2
+ try:
+      from html.entities import entitydefs
+ except ImportError:
+      from htmlentitydefs import entitydefs
 
-    def _extract_entity_name(m):
-        return m.group()[1:-1]
+try:
+  from html.parser import HTMLParser
+except ImportError:    #  py2
+  from htmllib import HTMLParser
 
 import tornado.ioloop
 import tornado.iostream
 
 # try to import C parser then fallback in pure python parser.
 try:
-    from http_parser.parser import HttpParser
+  from http_parser.parser import HttpParser
 except ImportError:
-    try:
-        from http_parser.pyparser import HttpParser
-    except ImportError:
-        from HTMLParser import HTMLParser as HttpParser  # py2
+  from http_parser.pyparser import HttpParser
 
-UserAgent = 'FetchTitle/1.2 (wh_linux@126.com)'
+UserAgent = 'FetchTitle/1.3 (wh_linux@126.com)'
+
+def get_charset_from_ctype(ctype):
+  pos = ctype.find('charset=')
+  if pos > 0:
+    charset = ctype[pos+8:]
+    if charset.lower() == 'gb2312':
+      # Windows misleadingly uses gb2312 when it's gbk or gb18030
+      charset = 'gb18030'
+    elif charset.lower() == 'windows-31j':
+      # cp932's IANA name (Windows-31J), extended shift_jis
+      # https://en.wikipedia.org/wiki/Code_page_932
+      charset = 'cp932'
+    return charset
+
+class HtmlTitleParser(HTMLParser):
+  charset = title = None
+  default_charset = 'utf-8'
+  result = None
+  _title_coming = False
+
+  def __init__(self):
+    # use a list to store literal bytes and escaped Unicode
+    self.title = []
+    super().__init__()
+
+  def feed(self, bytesdata):
+    if bytesdata:
+      super().feed(bytesdata.decode('latin1'))
+    else:
+      self.close()
+
+  def close(self):
+    self._check_result(force=True)
+    super().close()
+
+  def handle_starttag(self, tag, attrs):
+    # Google Search uses wrong meta info
+    # Baidu Cache declared charset twice. The former is correct.
+    if tag == 'meta' and not self.charset:
+      attrs = dict(attrs)
+      # try charset attribute first. Wrong quoting may result in this:
+      # <META http-equiv=Content-Type content=text/html; charset=gb2312>
+      if attrs.get('charset', False):
+        self.charset = attrs['charset']
+      elif attrs.get('http-equiv', '').lower() == 'content-type':
+        self.charset = get_charset_from_ctype(attrs.get('content', ''))
+    elif tag == 'title':
+      self._title_coming = True
+
+    self._check_result()
+
+  def handle_data(self, data, unicode=False):
+    if not unicode:
+      data = data.encode('latin1') # encode back
+    if self._title_coming:
+      self.title.append(data)
+
+  def handle_endtag(self, tag):
+    self._title_coming = False
+    self._check_result()
+
+  def handle_charref(self, name):
+    if name[0] == 'x':
+      x = int(name[1:], 16)
+    else:
+      x = int(name)
+    ch = chr(x)
+    self.handle_data(ch, unicode=True)
+
+  def handle_entityref(self, name):
+    try:
+      ch = entitydefs[name]
+    except KeyError:
+      ch = '&' + name
+    self.handle_data(ch, unicode=True)
+
+  def _check_result(self, force=False):
+    if self.result is not None:
+      return
+
+    if (force or self.charset is not None) \
+       and self.title:
+      self.result = ''.join(
+        x if isinstance(x, str) else x.decode(
+          self.charset or self.default_charset,
+          errors = 'surrogateescape',
+        ) for x in self.title
+      )
+
 class SingletonFactory:
   def __init__(self, name):
     self.name = name
@@ -61,26 +147,6 @@ TooManyRedirection = SingletonFactory('TooManyRedirection')
 Timeout = SingletonFactory('Timeout')
 
 logger = logging.getLogger(__name__)
-
-def _sharp2uni(code):
-  '''&#...; ==> unicode'''
-  s = code[1:].rstrip(';')
-  if s.startswith('x'):
-    return chr(int('0'+s, 16))
-  else:
-    return chr(int(s))
-
-def _mapEntity(m):
-  name = _extract_entity_name(m)
-  if name.startswith('#'):
-    return _sharp2uni(name)
-  try:
-    return _entities[name]
-  except KeyError:
-    return '&' + name
-
-def replaceEntities(s):
-  return re.sub(r'&[^;]+;', _mapEntity, s)
 
 class ContentFinder:
   buf = b''
@@ -97,74 +163,28 @@ class ContentFinder:
     return False
 
 class TitleFinder(ContentFinder):
-  found = False
-  title_begin = re.compile(b'<title[^>]*>', re.IGNORECASE)
-  title_end = re.compile(b'</title\s*>', re.IGNORECASE)
+  parser = None
   pos = 0
-
-  default_charset = 'UTF-8'
-  meta_charset = re.compile(br'<meta\s+http-equiv="?content-type"?\s+content="?[^;]+;\s*charset=([^">]+)"?\s*/?>|<meta\s+charset="?([^">/"]+)"?\s*/?>', re.IGNORECASE)
-  charset = None
+  maxpos = 102400 # look at most around 100K
 
   @staticmethod
   def _match_type(ctype):
     return ctype.find('html') != -1
 
   def __init__(self, mediatype):
-    ctype = mediatype.type
-    pos = ctype.find('charset=')
-    if pos > 0:
-      self.charset = ctype[pos+8:]
-      if self.charset.lower() == 'gb2312':
-        # Windows misleadingly uses gb2312 when it's gbk or gb18030
-        self.charset = 'gb18030'
+    charset = get_charset_from_ctype(mediatype.type)
+    self.parser = HtmlTitleParser()
+    self.parser.charset = charset
 
   def __call__(self, data):
-    if data is not None:
-      self.buf += data
+    if data:
       self.pos += len(data)
-      if len(self.buf) < 100:
-        return
-
-    buf = self.buf
-
-    if self.charset is None:
-      m = self.meta_charset.search(buf)
-      if m:
-        self.charset = (m.group(1) or m.group(2)).decode('latin1')
-
-    if not self.found:
-      m = self.title_begin.search(buf)
-      if m:
-        buf = self.buf = buf[m.end():]
-        self.found = True
-
-    if self.found:
-      m = self.title_end.search(buf)
-      if m:
-        raw_title = buf[:m.start()].strip()
-        logger.debug('title found at %d', self.pos - len(buf) + m.start())
-      elif len(buf) > 200: # when title goes too long
-        raw_title = buf[:200] + b'...'
-        logger.warn('title too long, starting at %d', self.pos - len(buf))
-      else:
-        raw_title = False
-
-      if raw_title:
-        return self.decode_title(raw_title)
-
-    if not self.found:
-      self.buf = buf[-100:]
-
-  def decode_title(self, raw_title):
-    try:
-      title = replaceEntities(raw_title.decode(self.get_charset(), errors='replace'))
-      return title
-    except (UnicodeDecodeError, LookupError):
-      return raw_title
-
-  def get_charset(self):
-    return self.charset or self.default_charset
+    if self.pos > self.maxpos:
+      # stop here
+      data = b''
+    self.parser.feed(data)
+    if self.parser.result:
+      return self.parser.result
 
 class PNGFinder(ContentFinder):
   _mime = 'image/png'
@@ -202,11 +222,7 @@ class JPEGFinder(ContentFinder):
         logging.warn('Bad JPEG signature: %r', self.buf[:3])
         return self._mt._replace(dimension='Bad JPEG')
       else:
-        if not py3:
-          self.blocklen = ord(self.buf[4]) * 256 + ord(self.buf[5]) + 2
-        else:
-          self.blocklen = self.buf[4] * 256 + self.buf[5] + 2
-
+        self.blocklen = self.buf[4] * 256 + self.buf[5] + 2
         self.buf = self.buf[2:]
         self.isfirst = False
 
@@ -215,23 +231,16 @@ class JPEGFinder(ContentFinder):
       if len(self.buf) < self.blocklen + 4:
         return
       buf = self.buf
-      if ord(buf[0]) != 0xff:
+      if buf[0] != 0xff:
         logging.warn('Bad JPEG: %r', self.buf[:self.blocklen])
         return self._mt._replace(dimension='Bad JPEG')
-      if (py3 and buf[1] == 0xc0 or buf[1] == 0xc2) or\
-         (ord(buf[1]) == 0xc0 or (buf[1]) == 0xc2):
-        if not py3:
-          s = ord(buf[7]) * 256 + ord(buf[8]), ord(buf[5]) * 256 + ord(buf[6])
-        else:
-          s = buf[7] * 256 + buf[8], buf[5] * 256 + buf[6]
+      if buf[1] == 0xc0 or buf[1] == 0xc2:
+        s = buf[7] * 256 + buf[8], buf[5] * 256 + buf[6]
         return self._mt._replace(dimension=s)
       else:
         # not Start Of Frame, retry with next block
         self.buf = buf = buf[self.blocklen:]
-        if not py3:
-          self.blocklen = ord(buf[2]) * 256 + ord(buf[3]) + 2
-        else:
-          self.blocklen = buf[2] * 256 + buf[3] + 2
+        self.blocklen = buf[2] * 256 + buf[3] + 2
         return self(b'')
 
 class GIFFinder(ContentFinder):
@@ -314,10 +323,12 @@ class TitleFetcher:
       )
       try:
         self.new_url(self.origurl)
-      finally:
+      except:
         self.io_loop.remove_timeout(self._timeout)
+        raise
 
   def on_timeout(self):
+    logger.debug('%s: request timed out', self.origurl)
     self.run_callback(Timeout)
 
   def parse_url(self, url):
@@ -413,14 +424,17 @@ class TitleFetcher:
       )
 
   def _prepare_host(self, host):
-    if not py3:
-      host = host.decode("utf-8")
     host = encodings.idna.nameprep(host)
-    return b'.'.join(encodings.idna.ToASCII(x) for x in host.split('.')).decode('ascii')
+    return b'.'.join(encodings.idna.ToASCII(x) if x else b''
+                     for x in host.split('.')).decode('ascii')
 
   def on_data(self, data, close=False, addr=None, stream=None):
     if close:
       logger.debug('%s: connection to %s closed.', self.origurl, addr)
+
+    if self.stream.error:
+      self.run_callback(self.stream.error)
+      return
 
     if (close and stream and self._redirected_stream is stream) or self._finished:
       # The connection is closing, and we are being redirected or we're done.
@@ -510,7 +524,7 @@ class TitleFetcher:
     return True
 
   def feed_finder(self, chunk):
-    '''feed data to TitleFinder, return the title if found'''
+    '''feed data to finder, return the title if found'''
     t = self.finder(chunk)
     if t is not None:
       return t
@@ -552,6 +566,9 @@ class GithubFinder(URLFinder):
                      })
 
   def parse_info(self, res):
+    if res.error:
+      self.done(res.error)
+      return
     repoinfo = json.loads(res.body.decode('utf-8'))
     self.response = res
     self.done(repoinfo)
@@ -560,7 +577,7 @@ class GithubUserFinder(GithubFinder):
   _url_pat = re.compile(r'https://github\.com/(?!blog(?:$|/))(?P<user>[^/]+)/?$')
   _api_pat = 'https://api.github.com/users/{user}'
 
-def main(urls):
+def main(urls, url_finders=(GithubFinder,)):
   class BatchFetcher:
     n = 0
     def __call__(self, title, fetcher):
@@ -576,10 +593,10 @@ def main(urls):
         tornado.ioloop.IOLoop.instance().stop()
 
     def add(self, url):
-      TitleFetcher(url, self, url_finders=(GithubFinder,))
+      TitleFetcher(url, self, url_finders=url_finders)
       self.n += 1
 
-  from tornado.log import enable_pretty_logging
+  from myutils import enable_pretty_logging
   enable_pretty_logging()
   f = BatchFetcher()
   for u in urls:
@@ -592,14 +609,12 @@ def test():
     'http://www.baidu.com',
     'https://zh.wikipedia.org', # redirection
     'http://redis.io/',
-    'http://kernel.org',
     'http://lilydjwg.is-programmer.com/2012/10/27/streaming-gzip-decompression-in-python.36130.html', # maybe timeout
     'http://img.vim-cn.com/22/cd42b4c776c588b6e69051a22e42dabf28f436', # image with length
     'https://github.com/m13253/titlebot/blob/master/titlebot.py_', # 404
     'http://lilydjwg.is-programmer.com/admin', # redirection
-    'http://twitter.com', # timeout
+    'http://twitter.com', # connect timeout
     'http://www.wordpress.com', # reset
-    'https://www.wordpress.com', # timeout
     'http://jquery-api-zh-cn.googlecode.com/svn/trunk/xml/jqueryapi.xml', # xml
     'http://lilydjwg.is-programmer.com/user_files/lilydjwg/config/avatar.png', # PNG
     'http://img01.taobaocdn.com/bao/uploaded/i1/110928240/T2okG7XaRbXXXXXXXX_!!110928240.jpg', # JPEG with Start Of Frame as the second block
@@ -611,7 +626,14 @@ def test():
     'http://t.cn/zTOgr1n', # multiple redirections
     'http://www.galago-project.org/specs/notification/0.9/x408.html', # </TITLE\n>
     'http://x.co/dreamz', # redirection caused false ConnectionClosed error
+    # http_parser won't decode this big gzip?
     'http://m8y.org/tmp/zipbomb/zipbomb_light_nonzero.html', # very long title
+    'http://www.83wyt.com', # reversed meta attribute order
+    'https://www.inoreader.com', # malformed start tag: <meta http-equiv="Content-Type" content="text/html" ; charset="UTF-8">
+    'https://linuxtoy.org/archives/linux-deepin-2014-alpha-into-new-deepin-world.html', # charref outside ASCII
+    'http://74.125.235.191/search?site=&source=hp&q=%E6%9C%8D%E5%8A%A1%E5%99%A8+SSD&btnG=Google+%E6%90%9C%E7%B4%A2', # right charset in HTTP, wrong in HTML
+    'http://digital.sina.com.hk/news/-7-1514837/1.html', # mixed Big5 and non-Big5 escaped Unicode character
+    'http://cache.baiducontent.com/c?m=9f65cb4a8c8507ed4fece7631046893b4c4380147c808c5528888448e435061e5a27b9e867750d04d6c57f6102ad4b57f7fa3372340126bc9fcc825e98e6d27e20d77465671df65663a70edecb5124b137e65ffed86ef0bb8025e3ddc5a2de4352ba44757d97818d4d0164dd1efa034093b1e842022e60adec40728f2d6058e93430c6508ae5256f779686d94b3db3&p=882a9e41c0d25ffc57efdc394c52&newp=8a64865b85cc43ff57e6902c495f92695803ed603fd3d7&user=baidu&fm=sc&query=mac%CF%C2%D7%EE%BA%C3%B5%C4%C8%CB%C8%CB%BF%CD%BB%A7%B6%CB&qid=&p1=5', # HTML document inside another, correct charset is in outside one and title inside
   )
   main(urls)
 
